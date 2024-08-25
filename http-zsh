@@ -1,0 +1,174 @@
+#!/usr/bin/env zsh
+
+# A simple http server using zsh and nc (netcat).
+
+# ToDo: Dynamic HTTP Server
+# ToDo: separate query string and path
+
+zparseopts -D -E -F - \
+    s=serv_type -static=serv_type \
+    h=serv_type -html=serv_type || exit 1
+
+# serv_type=$serv_type
+server_type_error="Error - pass one server type option:\n\tstatic (-s|--static)\n\thtml (-h|--html)"
+if [[ "${#serv_type}" != 1 ]]; then
+    echo "$server_type_error" && exit
+fi
+serv_type=${serv_type:0:1}
+
+readonly PORT=6969
+readonly BR="\r\n"
+readonly RESPONSE_FIFO='response_fifo'
+readonly DEFAULT_BODY="<h1>Hello, world!</h1>"
+
+#######################################
+# Return an HTML Response
+# Arguments:
+#   status_code
+#   status_message
+#   bodys
+# Outputs:
+#   HTTP Response (text/html)
+#######################################
+http_response() {
+    local status_code="$1"
+    local status_message="$2"
+    local STATUS=" $status_code $status_message$BR"
+
+    local BODY="$3"
+    local body_len=$(echo -ne $BODY | wc --chars || echo -ne 0)
+
+    local HEADERS="content-length: $body_len${BR}content-type: text/html$BR$BR"
+
+    local STATIC_RESP="HTTP/1.1$STATUS$HEADERS$BODY"
+
+    echo -ne "$STATIC_RESP"
+}
+
+readonly DEFAULT_RESPONSE=$(http_response 200 Ok "$DEFAULT_BODY")
+
+#######################################
+# Start a TCP socket that returns a static HTTP response with an HTML body.
+# Globals:
+#   PORT
+# Arguments:
+#   None
+# Outputs:
+#   HTTP Request (incoming)
+#   HTTP Response (text/html)
+#######################################
+static_server() {
+    readonly INDEX='./index.html'
+    local BODY="$DEFAULT_BODY"
+    [[ -f "$INDEX" ]] && BODY=$(bat "$INDEX")
+    readonly RESP=$(http_response 200 Ok "$BODY")
+
+    echo "Running static on port $PORT"
+
+    while true; do
+        echo -e "$RESP" | nc -lN $PORT | while read -r -t 0.5 req; do
+            echo $req
+        done
+    done
+
+    echo "closed $PORT"
+}
+
+#######################################
+# Router HTTP request and respond based on the method and path.
+# Only GET get is support all other methods will trigger a 500.
+# IF path "/"
+#    IF "./index.html" exist return as response body
+#    ELSE return a default 200 HTML response body
+# ELSE path "*"
+#    IF ".(path)index.html" exist return as response body
+#    ELSE return 404
+# Arguments:
+#   route
+# Outputs:
+#   HTTP Response (text/html)
+#######################################
+html_router() {
+    route="$1"
+
+    case "$route" in
+    "/")
+        route_chars="$(echo -n $route | wc --chars)"
+        if [[ "$route_chars" > 1 ]]; then
+            http_response 404 "Not found" "<p>Page not found.</p>"
+        elif [ -e "./index.html" ]; then
+            local body=$(cat ".${route}index.html")
+            http_response 200 Ok "$body"
+        else
+            http_response 200 Ok "<p>Hello, world! ($route)</p>"
+        fi
+        ;;
+    *)
+        router_file="./$route/index.html"
+        if [ -e "$router_file" ]; then
+            http_response 200 Ok "$(bat "$router_file")"
+        else
+            http_response 404 "Not found" "<p>Page not found.</p>"
+        fi
+        ;;
+    esac
+}
+
+#######################################
+# Read HTTP request and handle the method and path via html_router().
+# Globals:
+#   RESPONSE_FIFO
+# Outputs:
+#   HTTP Response (text/html)
+#######################################
+handle_request() {
+    while read line; do
+        break
+    done
+
+    METHOD=$(echo $line | sd '(.*) /.*' '$1')
+    route=$(echo $line | sd '.* (/.*) .*' '$1')
+    echo "$METHOD $route"
+
+    case $METHOD in
+    "GET")
+        RESP_200=$(html_router "$route")
+        echo -ne $RESP_200 >"./$RESPONSE_FIFO" && sleep 0.0001s
+        ;;
+    *)
+        RESP_501=$(http_response 501 "Not Implemented" "<p>Unsupported method ($METHOD)</p>")
+        echo -ne $RESP_501 >"./$RESPONSE_FIFO" && sleep 0.0001s
+        ;;
+    esac
+}
+
+#######################################
+# Start a TCP socket that returns a static HTTP response with an HTML body.
+# Globals:
+#   PORT
+# Arguments:
+#   None
+# Outputs:
+#   HTTP Response (text/html)
+#######################################
+html_server() {
+    [[ -e "./$RESPONSE_FIFO" ]] && rm "./$RESPONSE_FIFO"
+    mkfifo "$RESPONSE_FIFO"
+
+    echo "Running html server on port $PORT"
+
+    while true; do
+        cat "./$RESPONSE_FIFO" | nc -lN $PORT | handle_request
+    done
+
+    echo "closed $PORT"
+}
+
+case "$serv_type" in
+-s | --static)
+    static_server
+    ;;
+-h | --html)
+    html_server
+    ;;
+esac
