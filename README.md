@@ -1,6 +1,6 @@
 # httpz
 
-A meat and potatos http server written in zsh, using nc (netcat).
+A meat and potatoes HTTP server written in ZSH, using nc (netcat).
 
 ## Usage
 
