@@ -9,3 +9,4 @@ A meat and potatos http server written in zsh, using nc (netcat).
 | flag                                   | description           |
 | -------------------------------------- | --------------------- |
 | `-s` (`--static`),<br> `-h` (`--html`) | Required server type. |
+| `-p` `--port`,                         | Optional port number. |
