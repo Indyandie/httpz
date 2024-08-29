@@ -16,7 +16,6 @@ if [[ "${#port_value}" -ne "2" && "${#port_value}" -gt "1" ]]; then
     echo "$port_value_error" && exit
 fi
 
-
 case "${port_value:0:1}" in
 -p | --port)
     readonly PORT="${port_value:1:1}"
@@ -189,3 +188,4 @@ case "$serv_type" in
     html_server
     ;;
 esac
+
