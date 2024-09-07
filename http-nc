@@ -8,6 +8,7 @@
 zparseopts -D -E -F - \
     s=serv_type -static=serv_type \
     h=serv_type -html=serv_type \
+    t=serv_type -test=serv_type \
     p:=port_value -port:=port_value || exit 1
 
 port_value_error="Error - pass one port option:\n\t(-p|--port)"
@@ -82,8 +83,9 @@ static_server() {
     echo "Running static on port $PORT"
 
     while true; do
-        echo -e "$RESP" | nc -lN $PORT | while read -r -t 0.5 req; do
+        echo -e "$RESP" | nc -lN $PORT | while read req; do
             echo $req
+            break
         done
     done
 
@@ -138,22 +140,67 @@ html_router() {
 #   HTTP Response (text/html)
 #######################################
 handle_request() {
-    while read line; do
-        break
+    handler=$1
+
+    echo '' >request
+    con_len='^Content-Length.*'
+    body_len=0
+
+    echo "\n\nreading request: $(date)\n"
+
+    while IFS= read line || false; do
+        # echo $line >>request
+        echo "line: $(date)\n$line"
+        newline=$(echo $line | tr -d '\r')
+
+        if [[ "$newline" =~ $con_len ]]; then
+            body_len=$(echo $line | rg Length | sd '.* (\d+).*' '$1')
+            body_len=$(($body_len * 1))
+        fi
+
+        if [[ "$newline" = '' ]]; then
+            echo "the break '$line'"
+            break
+        fi
     done
 
-    METHOD=$(echo $line | sd '(.*) /.*' '$1')
-    route=$(echo $line | sd '.* (/.*) .*' '$1')
-    echo "$METHOD $route"
+    while read -r -n"$body_len" body || false; do
+        echo "line: $(date)\n$body"
+    done
 
-    case $METHOD in
-    "GET")
-        RESP_200=$(html_router "$route")
-        echo -ne $RESP_200 >"./$RESPONSE_FIFO" && sleep 0.0001s
+    echo "reading complete: $(date)\n$line"
+    # if [[ $body_len > 0 ]]; then
+    #     echo "\n\nreading body: @@$body_len@@@\n"
+
+    #     while read -n "$body_len" body; do
+    #         echo $body
+    #     done
+    # fi
+
+    # METHOD=$(echo $line | sd '(.*) /.*' '$1')
+    # route=$(echo $line | sd '.* (/.*) .*' '$1')
+    # echo "method: $METHOD, route: $route"
+    echo -ne $DEFAULT_RESPONSE >"./$RESPONSE_FIFO" && sleep 0.0001s
+    exit
+
+    case $handler in
+    "html")
+        case $METHOD in
+        "GET")
+            RESP_200=$(html_router "$route")
+            echo -ne $RESP_200 >"./$RESPONSE_FIFO" && sleep 0.0001s
+            ;;
+        *)
+            RESP_501=$(http_response 501 "Not Implemented" "<p>Unsupported method ($METHOD)</p>")
+            echo -ne $RESP_501 >"./$RESPONSE_FIFO" && sleep 0.0001s
+            ;;
+        esac
+        ;;
+    "test")
+        echo -ne $DEFAULT_RESPONSE >"./$RESPONSE_FIFO" && sleep 0.0001s
         ;;
     *)
-        RESP_501=$(http_response 501 "Not Implemented" "<p>Unsupported method ($METHOD)</p>")
-        echo -ne $RESP_501 >"./$RESPONSE_FIFO" && sleep 0.0001s
+        echo -ne $DEFAULT_RESPONSE >"./$RESPONSE_FIFO" && sleep 0.0001s
         ;;
     esac
 }
@@ -174,7 +221,29 @@ html_server() {
     echo "Running html server on port $PORT"
 
     while true; do
-        cat "./$RESPONSE_FIFO" | nc -lN $PORT | handle_request
+        cat "./$RESPONSE_FIFO" | nc -lN $PORT | handle_request html
+    done
+
+    echo "closed $PORT"
+}
+
+#######################################
+# Start a TCP socket that returns a static HTTP response with an HTML body.
+# Globals:
+#   PORT
+# Arguments:
+#   None
+# Outputs:
+#   HTTP Response (text/html)
+#######################################
+test_server() {
+    [[ -e "./$RESPONSE_FIFO" ]] && rm "./$RESPONSE_FIFO"
+    mkfifo "$RESPONSE_FIFO"
+
+    echo "Running test server on port $PORT"
+
+    while true; do
+        cat "./$RESPONSE_FIFO" | nc -lN $PORT | handle_request test
     done
 
     echo "closed $PORT"
@@ -187,5 +256,7 @@ case "$serv_type" in
 -h | --html)
     html_server
     ;;
+-t | --test)
+    test_server
+    ;;
 esac
-
