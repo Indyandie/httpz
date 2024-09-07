@@ -1,0 +1,74 @@
+#!/usr/bin/env zsh
+
+zmodload zsh/net/tcp
+
+readonly CHUNK_SIZE=1024
+echo closing... && ztcp -vcf && echo ...closed
+
+ztcp -v -l 8080 && echo "start listening...\n"
+listenfd=$REPLY
+# echo "listenfd: $listenfd"
+echo "ztcp status: $(ztcp)...end\n\n"
+
+while true; do
+
+    ztcp -v -a $listenfd && echo "\n\naccept request...\n"
+    fd=$REPLY
+
+    typeset req_method req_path req_version
+    read -r -u $fd req_method req_path req_version || echo noheader
+
+    echo "method:$req_method\npath: $req_path\nversion: $req_version\n\n"
+
+    typeset -A req_headers
+    typeset header_key header_value
+
+    while read -r -u $fd header_key header_value && [[ $header_key != $'\r' ]] && [[ -n $header_value ]]; do
+        header_key=$(tr -d ':' <<< "$header_key")
+        req_headers[$header_key]=$(tr -d '\r' <<< $header_value)
+    done
+
+    typeset req_headers_json="\"headers\": {"
+    for key in "${(@k)req_headers}"; do
+        req_headers_json+="\"$key\":\"${req_headers[$key]}\","
+    done
+    req_headers_json+=$(sd '(.*),' '$1}' <<< "$req_headers_json")
+    echo $req_headers_json
+
+    if [[ "${req_headers[Content-Length]}" > 0 ]]; then
+        typeset req_body=""
+
+        case $req_method in
+            ('GET'| 'HEAD'| 'TRACE')
+                # do nothing
+                unset  req_body req_body_json
+            ;;
+            (*)
+                while true; do
+                    chunk=$(timeout 0.01 dd bs=$CHUNK_SIZE count=1 <&$fd 2>/dev/null)
+
+                    if [[ $? -ne 0 || -z "$chunk" ]]; then
+                        break
+                    fi
+
+                    req_body+=$chunk
+                done
+
+                typeset req_body_json="\"body\":\"$req_body\""
+                echo $req_body_json
+            ;;
+        esac
+    fi
+
+
+    echo "HTTP/1.1 204 No Content\r\n\r\n" >&$fd
+
+    unset req_headers req_headers_json req_body req_body_json
+    unset req_method req_path req_version
+    unset header_key header_value
+
+    ztcp -v -c $fd && echo "\n\nclose...\n"
+done
+
+ztcp -vc $listenfd
+ztcp -vc $fd
