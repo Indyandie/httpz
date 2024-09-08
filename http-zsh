@@ -2,73 +2,152 @@
 
 zmodload zsh/net/tcp
 
-readonly CHUNK_SIZE=1024
-echo closing... && ztcp -vcf && echo ...closed
+# ztcp -vcf
 
-ztcp -v -l 8080 && echo "start listening...\n"
-listenfd=$REPLY
-# echo "listenfd: $listenfd"
-echo "ztcp status: $(ztcp)...end\n\n"
+zparseopts -D -E -F - \
+    s=serv_type -static=serv_type \
+    h=serv_type -html=serv_type \
+    t=serv_type -test=serv_type \
+    p:=port_value -port:=port_value || exit 1
 
-while true; do
+port_value_error="Error - pass one port option:\n\t(-p|--port)"
 
-    ztcp -v -a $listenfd && echo "\n\naccept request...\n"
-    fd=$REPLY
+if [[ "${#port_value}" -ne "2" && "${#port_value}" -gt "1" ]]; then
+    echo "$port_value_error" && exit
+fi
 
-    typeset req_method req_path req_version
-    read -r -u $fd req_method req_path req_version || echo noheader
+case "${port_value:0:1}" in
+-p | --port)
+    readonly PORT="${port_value:1:1}"
+    ;;
+*)
+    readonly PORT=1234
+    ;;
+esac
 
-    echo "method:$req_method\npath: $req_path\nversion: $req_version\n\n"
+server_type_error="Error - pass one server type option:\n\tstatic (-s|--static)\n\thtml (-h|--html)"
 
-    typeset -A req_headers
-    typeset header_key header_value
+if [[ "${#serv_type}" != 1 ]]; then
+    echo "$server_type_error" && exit
+fi
 
-    while read -r -u $fd header_key header_value && [[ $header_key != $'\r' ]] && [[ -n $header_value ]]; do
-        header_key=$(tr -d ':' <<< "$header_key")
-        req_headers[$header_key]=$(tr -d '\r' <<< $header_value)
-    done
+serv_type=${serv_type:0:1}
 
-    typeset req_headers_json="\"headers\": {"
-    for key in "${(@k)req_headers}"; do
-        req_headers_json+="\"$key\":\"${req_headers[$key]}\","
-    done
-    req_headers_json+=$(sd '(.*),' '$1}' <<< "$req_headers_json")
-    echo $req_headers_json
+typeset -A conf=(
+    PORT $PORT 
+    HOST localhost 
+    CHUNK_SIZE 1024
+)
 
-    if [[ "${req_headers[Content-Length]}" > 0 ]]; then
-        typeset req_body=""
+echo "port: $conf[PORT]"
+echo "host: $conf[HOST]"
 
-        case $req_method in
-            ('GET'| 'HEAD'| 'TRACE')
-                # do nothing
-                unset  req_body req_body_json
+typeset -r BR="\r\n"
+
+#######################################
+# Open a tcp socket and listen for http requests
+# Arguments:
+#   status_code
+#   status_message
+#   bodys
+# Outputs:
+#   HTTP Response (text/html)
+#######################################
+http_response() {
+    local status_code="$1"
+    local status_message="$2"
+    local STATUS=" $status_code $status_message$BR"
+
+    local BODY="$3"
+    local body_len=$(echo -ne $BODY | wc --chars || echo -ne 0)
+
+    local HEADERS="content-length: $body_len${BR}content-type: text/html$BR$BR"
+
+    local STATIC_RESP="HTTP/1.1$STATUS$HEADERS$BODY"
+
+    echo -ne "$STATIC_RESP"
+}
+
+typeset -r DEFAULT_BODY="<h1>Hello, world!</h1>"
+typeset -r DEFAULT_RESPONSE=$(http_response 200 Ok "$DEFAULT_BODY")
+
+typeset -r CHUNK_SIZE=1024
+
+function http-listen {
+    local PORT=$conf[PORT]
+    ztcp -v -l $PORT && echo "listening on $PORT...\n"
+    listenfd=$REPLY
+
+
+    while true; do
+
+        ztcp -v -a $listenfd && echo "\n\naccept request...\n"
+        fd=$REPLY
+
+        typeset req_method req_path req_version
+        read -r -u $fd req_method req_path req_version || echo noheader
+
+        echo "method:$req_method\npath: $req_path\nversion: $req_version\n\n"
+
+        typeset -A req_headers
+        typeset header_key header_value
+
+        while read -r -u $fd header_key header_value && [[ $header_key != $'\r' ]] && [[ -n $header_value ]]; do
+            header_key=$(tr -d ':' <<< "$header_key")
+            req_headers[$header_key]=$(tr -d '\r' <<< $header_value)
+        done
+
+        typeset req_headers_json="\"headers\": {"
+        for key in "${(@k)req_headers}"; do
+            req_headers_json+="\"$key\":\"${req_headers[$key]}\","
+        done
+        req_headers_json+=$(sd '(.*),' '$1}' <<< "$req_headers_json")
+        echo $req_headers_json
+
+        if [[ "${req_headers[Content-Length]}" > 0 ]]; then
+            typeset req_body=""
+
+            case $req_method in
+                ('GET'| 'HEAD'| 'TRACE')
+                    # do nothing
+                    unset  req_body req_body_json
+                ;;
+                (*)
+                    while true; do
+                        chunk=$(timeout 0.01 dd bs=$CHUNK_SIZE count=1 <&$fd 2>/dev/null)
+
+                        if [[ $? -ne 0 || -z "$chunk" ]]; then
+                            break
+                        fi
+
+                        req_body+=$chunk
+                    done
+
+                    typeset req_body_json="\"body\":\"$req_body\""
+                    echo $req_body_json
+                ;;
+            esac
+        fi
+
+
+        case "$serv_type" in
+        -s | --static)
+            echo $DEFAULT_RESPONSE >&$fd
             ;;
-            (*)
-                while true; do
-                    chunk=$(timeout 0.01 dd bs=$CHUNK_SIZE count=1 <&$fd 2>/dev/null)
-
-                    if [[ $? -ne 0 || -z "$chunk" ]]; then
-                        break
-                    fi
-
-                    req_body+=$chunk
-                done
-
-                typeset req_body_json="\"body\":\"$req_body\""
-                echo $req_body_json
+        -h | --html)
+            echo 'TODO'
             ;;
         esac
-    fi
 
+        unset req_headers req_headers_json req_body req_body_json
+        unset req_method req_path req_version
+        unset header_key header_value
 
-    echo "HTTP/1.1 204 No Content\r\n\r\n" >&$fd
+        ztcp -v -c $fd && echo "\n\nclose...\n"
+    done
 
-    unset req_headers req_headers_json req_body req_body_json
-    unset req_method req_path req_version
-    unset header_key header_value
+    ztcp -vc $listenfd
+    ztcp -vc $fd
+}
 
-    ztcp -v -c $fd && echo "\n\nclose...\n"
-done
-
-ztcp -vc $listenfd
-ztcp -vc $fd
+http-listen
