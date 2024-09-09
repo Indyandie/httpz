@@ -205,7 +205,6 @@ http-listen() {
             echo $DEFAULT_RESPONSE >&$fd
             ;;
         -h | --html)
-            echo 'TODO'
             HTML_RESPONSE=$(html-handler "$req_method" "$req_path")
             echo $HTML_RESPONSE >&$fd
             ;;
