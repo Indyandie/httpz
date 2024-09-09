@@ -73,7 +73,74 @@ typeset -r DEFAULT_RESPONSE=$(http_response 200 Ok "$DEFAULT_BODY")
 
 typeset -r CHUNK_SIZE=1024
 
-function http-listen {
+#######################################
+# Router HTTP request and respond based on the method and path.
+# Only GET get is support all other methods will trigger a 500.
+# IF path "/"
+#    IF "./index.html" exist return as response body
+#    ELSE return a default 200 HTML response body
+# ELSE path "*"
+#    IF ".(path)index.html" exist return as response body
+#    ELSE return 404
+# Arguments:
+#   route
+# Outputs:
+#   HTTP Response (text/html)
+#######################################
+html_router() {
+    ROUTE_PATH="$1"
+
+    case "$ROUTE_PATH" in
+    *.html)
+        if [ -e ".$ROUTE_PATH" ]; then
+            http_response 200 Ok "$(bat ".$ROUTE_PATH")"
+        else
+            http_response 404 "Not found" "<p>Page not found.</p>"
+        fi
+        ;;
+    "/")
+        ROUTE_PATH_CHARS="$(echo -n $ROUTE_PATH | wc --chars)"
+        if [[ "$ROUTE_PATH_CHARS" > 1 ]]; then
+            http_response 404 "Not found" "<p>Page not found.</p>"
+        elif [ -e "./index.html" ]; then
+            local BODY=$(cat ".${ROUTE_PATH}index.html")
+            http_response 200 Ok "$BODY"
+        else
+            http_response 404 "Not found" "<p>Page not found.</p>"
+        fi
+        ;;
+    *)
+        ROUTE_FILE="./$ROUTE_PATH/index.html"
+        if [ -e "$ROUTE_FILE" ]; then
+            http_response 200 Ok "$(bat "$ROUTE_FILE")"
+        else
+            http_response 404 "Not found" "<p>Page not found.</p>"
+        fi
+        ;;
+    esac
+}
+
+html-handler() {
+    local HANDLER_METHOD=$1
+    local HANDLER_PATH=$2
+
+    case $HANDLER_METHOD in
+    "GET")
+        RESP_200=$(html_router "$HANDLER_PATH")
+        echo -ne $RESP_200
+        ;;
+    "HEAD")
+        RESP_501=$(http_response 501 "Not Implemented" "")
+        echo -ne $RESP_501
+        ;;
+    *)
+        RESP_501=$(http_response 501 "Not Implemented" "<p>Unsupported method ($HANDLER_METHOD)</p>")
+        echo -ne $RESP_501
+        ;;
+    esac
+}
+
+http-listen() {
     local PORT=$conf[PORT]
     ztcp -v -l $PORT && echo "listening on $PORT...\n"
     listenfd=$REPLY
@@ -136,6 +203,8 @@ function http-listen {
             ;;
         -h | --html)
             echo 'TODO'
+            HTML_RESPONSE=$(html-handler "$req_method" "$req_path")
+            echo $HTML_RESPONSE >&$fd
             ;;
         esac
 
