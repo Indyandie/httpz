@@ -14,10 +14,15 @@ A meat and potatoes HTTP server written in ZSH, using nc (netcat).
 ## To Do
 
 - [ ] Separate query string, split parameters
-- [ ] Read response
+- [x] Read response
 - [ ] file server
   - list files
   - list directories
   - navigate directories
   - server files
-- [ ] Use Z shell TCP module
+- [x] Use Z shell TCP module
+
+## References
+
+- [zshttpd](https://github.com/alter2000/.dots/blob/master/zsh/bin/zshttpd.zsh)
+- [Building a Web server in Bash](https://dev.to/leandronsp/building-a-web-server-in-bash-part-ii-parsing-http-14kg)
