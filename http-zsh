@@ -62,6 +62,9 @@ http_response() {
     local body_len=$(echo -ne $BODY | wc --chars || echo -ne 0)
 
     local HEADERS="content-length: $body_len${BR}content-type: text/html$BR$BR"
+    if [[ 0 = "$body_len" ]]; then
+        HEADERS="$BR"
+    fi
 
     local STATIC_RESP="HTTP/1.1$STATUS$HEADERS$BODY"
 
