@@ -7,7 +7,7 @@ zmodload zsh/net/tcp
 zparseopts -D -E -F - \
     s=serv_type -static=serv_type \
     h=serv_type -html=serv_type \
-    t=serv_type -test=serv_type \
+    f=serv_type -file=serv_type \
     p:=port_value -port:=port_value || exit 1
 
 port_value_error="Error - pass one port option:\n\t(-p|--port)"
@@ -68,7 +68,28 @@ http_response() {
 
     local STATIC_RESP="HTTP/1.1$STATUS$HEADERS$BODY"
 
-    echo -ne "$STATIC_RESP"
+    print "$STATIC_RESP"
+}
+
+http_response_img() {
+    local status_code="$1"
+    local status_message="$2"
+    local STATUS=" $status_code $status_message$BR"
+
+    local BODY_PATH="$3"
+    local BODY=$(cat $BODY_PATH)
+    local body_len="$(wc --bytes --total=only $BODY_PATH || echo -ne 0)"
+
+    local HEADERS="accept-ranges: bytes${BR}content-length: $body_len${BR}content-type: image/png$BR$BR"
+    if [[ 0 = "$body_len" ]]; then
+        HEADERS="$BR"
+    fi
+
+    # local STATIC_RESP="HTTP/1.1$STATUS$HEADERS$BODY"
+    local STATIC_RESP="HTTP/1.1$STATUS$HEADERS"
+
+    # echo -ne "$STATIC_RESP"
+    print "$STATIC_RESP"
 }
 
 typeset -r DEFAULT_BODY="<h1>Hello, world!</h1>"
@@ -143,11 +164,71 @@ html-handler() {
     esac
 }
 
+file_router() {
+    local ROUTE_PATH="$1"
+  
+    case "$ROUTE_PATH" in
+    *.png)
+        if [ -e ".$ROUTE_PATH" ]; then
+            http_response_img 200 Ok ".$ROUTE_PATH"
+        else
+            http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
+        fi
+        ;;
+    *.html)
+        if [ -e ".$ROUTE_PATH" ]; then
+            http_response 200 Ok "$(bat ".$ROUTE_PATH")" 
+        else
+            http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
+        fi
+        ;;
+    "/")
+        ROUTE_PATH_CHARS="$(echo -n $ROUTE_PATH | wc --chars)"
+        if [[ "$ROUTE_PATH_CHARS" > 1 ]]; then
+            http_response 404 "Not found" "<p>Page not found.</p>"
+        elif [ -e "./index.html" ]; then
+            local BODY=$(cat ".${ROUTE_PATH}index.html")
+            http_response 200 Ok "$BODY"
+        else
+            http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
+        fi
+        ;;
+    *)
+        ROUTE_FILE="./$ROUTE_PATH/index.html"
+        if [ -e "$ROUTE_FILE" ]; then
+            http_response 200 Ok "$(cat "$ROUTE_FILE")"
+        else
+            http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
+        fi
+        ;;
+    esac
+}
+
+file-handler() {
+    local HANDLER_METHOD=$1
+    local HANDLER_PATH=$2
+
+    case $HANDLER_METHOD in
+    "GET")
+        # RESP_200=$(file_router "$HANDLER_PATH")
+        # echo -ne $RESP_200
+        print "$(file_router "$HANDLER_PATH")"
+        ;;
+    "HEAD")
+        RESP_501=$(http_response 501 "Not Implemented" "")
+        print $RESP_501
+        ;;
+    *)
+        RESP_501=$(http_response 501 "Not Implemented" "<p>Unsupported method ($HANDLER_METHOD)</p>")
+        print $RESP_501
+        ;;
+    esac
+}
+
 http-listen() {
     local PORT=$conf[PORT]
     ztcp -v -l $PORT && echo "listening on $PORT...\n"
     listenfd=$REPLY
-
 
     while true; do
 
@@ -207,6 +288,10 @@ http-listen() {
         -h | --html)
             HTML_RESPONSE=$(html-handler "$req_method" "$req_path")
             echo $HTML_RESPONSE >&$fd
+            ;;
+        -f | --file)
+            HTML_RESPONSE=$(file-handler "$req_method" "$req_path")
+            print >&$fd $HTML_RESPONSE && test -f ".$req_path" && bat >&$fd ".$req_path"
             ;;
         esac
 
