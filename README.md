@@ -6,16 +6,22 @@ A meat and potatoes HTTP server written in ZSH, using nc (netcat).
 
 ### Flags
 
-| flag                                   | description           |
-| -------------------------------------- | --------------------- |
-| `-s` (`--static`),<br> `-h` (`--html`) | Required server type. |
-| `-p` `--port`,                         | Optional port number. |
+| flag                                                        | description           |
+| ----------------------------------------------------------- | --------------------- |
+| `-s` (`--static`),<br> `-h` (`--html`),<br> `-f` (`--file`) | Required server type. |
+| `-p` `--port`,                                              | Optional port number. |
 
 ## To Do
 
 - [ ] Separate query string, split parameters
 - [x] Read response
 - [ ] file server
+  - [ ] images
+    - [x] PNG
+    - [ ] JPEG
+    - [ ] GIF
+  - [ ] JS
+  - [ ] CSS
   - list files
   - list directories
   - navigate directories
