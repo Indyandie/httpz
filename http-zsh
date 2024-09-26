@@ -39,6 +39,17 @@ typeset -A conf=(
     CHUNK_SIZE 1024
 )
 
+typeset -A CONTENT_TYPES=(
+    html text/html
+    css text/css
+    png image/png
+    gif image/gif
+    jpeg image/jpeg
+    jpg image/jpg
+    webp image/webp
+    js application/javascript
+)
+
 echo "port: $conf[PORT]"
 echo "host: $conf[HOST]"
 
