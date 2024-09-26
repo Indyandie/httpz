@@ -132,6 +132,42 @@ http_response_img() {
     print "$STATIC_RESP"
 }
 
+#######################################
+# Print a http response for differnt content types
+# Arguments:
+#   status_code
+#   status_message
+#   BODY_PATH
+# Outputs:
+#   HTTP Response
+#######################################
+http_response_neue() {
+    local status_code="$1"
+    local status_message="$2"
+    local STATUS=" $status_code $status_message$BR"
+
+    local BODY_PATH="$3"
+    local FILE_EXTENSION="$(echo "$BODY_PATH" | sd '.*\.(\w+)$' '$1')"
+    local BINARY="$(file -i $BODY_PATH | rg --quiet binary && echo true || echo false)"
+    # local BODY=$(cat $BODY_PATH)
+
+    local body_len=0
+    if [[ 'true' = $BINARY ]]; then
+        body_len="$(wc --bytes --total=only $BODY_PATH || echo -ne 0)"
+    else
+        body_len="$(wc --chars --total=only $BODY_PATH || echo -ne 0)"
+    fi
+
+    local HEADER_CUSTOM="" # TODO
+    local HEADER_TYPE="content-type: $CONTENT_TYPES[$FILE_EXTENSION]$BR"
+    local HEADER_CONTENT_LEN="content-length: $body_len$BR"
+    local HEADERS="$([[ "" = $HEADER_CUSTOM ]] && echo "accept-ranges: bytes${BR}$HEADER_TYPE$HEADER_CONTENT_LEN$BR" || echo "$HEADER_CUSTOM$BR")"
+
+    local STATIC_RESP="HTTP/1.1$STATUS$HEADERS"
+
+    print "$STATIC_RESP"
+}
+
 typeset -r DEFAULT_BODY="<h1>Hello, world!</h1>"
 typeset -r DEFAULT_RESPONSE=$(http_response 200 Ok "$DEFAULT_BODY")
 
