@@ -13,15 +13,18 @@ A meat and potatoes HTTP server written in ZSH, using nc (netcat).
 
 ## To Do
 
-- [ ] Separate query string, split parameters
+- [ ] Separate query string, split parameters into an associative array
 - [x] Read response
 - [ ] file server
-  - [ ] images
+  - [x] images
     - [x] PNG
-    - [ ] JPEG
-    - [ ] GIF
-  - [ ] JS
-  - [ ] CSS
+    - [x] JPEG
+    - [x] GIF
+    - [x] WEBP
+  - [x] JS
+  - [x] CSS
+  - [ ] JSON
+  - [ ] YAML
   - list files
   - list directories
   - navigate directories
