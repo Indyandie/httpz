@@ -255,14 +255,14 @@ file_router() {
         ;;
     *.png | *.gif | *.jpeg | *.jpg | *.webp )
         if [ -e ".$ROUTE_PATH" ]; then
-            http_response_img 200 Ok ".$ROUTE_PATH"
+            http_response_neue 200 Ok ".$ROUTE_PATH"
         else
             http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     *.html)
         if [ -e ".$ROUTE_PATH" ]; then
-            http_response 200 Ok "$(bat ".$ROUTE_PATH")" 
+            http_response_neue 200 Ok ".$ROUTE_PATH" 
         else
             http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
         fi
