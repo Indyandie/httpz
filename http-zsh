@@ -243,6 +243,8 @@ html-handler() {
 file_router() {
     local ROUTE_PATH="$1"
   
+    setopt EXTENDED_GLOB
+
     case "$ROUTE_PATH" in
     *.js | *.css )
         if [ -e ".$ROUTE_PATH" ]; then
@@ -280,6 +282,15 @@ file_router() {
         ROUTE_FILE="./${ROUTE_PATH}index.html"
         if [ -e "$ROUTE_FILE" ]; then
             http_response 200 Ok "$(cat "$ROUTE_FILE")"
+        else
+            http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
+        fi
+        ;;
+    */[a-zA-Z0-9_]##)
+        ROUTE_FILE="./$ROUTE_PATH/index.html"
+        if [ -e "$ROUTE_FILE" ]; then
+            # http_response 200 Ok "$(cat "$ROUTE_FILE")"
+            http_response_headers 301 "Move Permanently" "LOCATION: http://localhost:$conf[PORT]$ROUTE_PATH/$BR" ""
         else
             http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
         fi
