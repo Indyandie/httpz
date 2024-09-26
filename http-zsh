@@ -276,6 +276,14 @@ file_router() {
             http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
+    */)
+        ROUTE_FILE="./${ROUTE_PATH}index.html"
+        if [ -e "$ROUTE_FILE" ]; then
+            http_response 200 Ok "$(cat "$ROUTE_FILE")"
+        else
+            http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
+        fi
+        ;;
     *)
         ROUTE_FILE="./$ROUTE_PATH/index.html"
         if [ -e "$ROUTE_FILE" ]; then
