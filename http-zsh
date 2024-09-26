@@ -82,6 +82,34 @@ http_response() {
     print "$STATIC_RESP"
 }
 
+#######################################
+# Print a http response with predifined headers
+# Arguments:
+#   status_code
+#   status_message
+#   HEADER_CUSTOM
+#   BODY
+# Outputs:
+#   HTTP Response
+#######################################
+http_response_headers() {
+    local status_code="$1"
+    local status_message="$2"
+    local STATUS=" $status_code $status_message$BR"
+
+    local BODY="$4"
+    local body_len=$(echo -ne $BODY | wc --chars || echo -ne 0)
+
+    local HEADER_CUSTOM="$3"
+    local HEADER_TYPE="content-type: text/html$BR"
+    local HEADER_CONTENT_LEN=$([[ 0 = $body_len ]] && echo "content-length: $body_len${BR}")
+    local HEADERS=$([[ "" = $HEADER_CUSTOM ]] && echo "$HEADER_TYPE$HEADER_CONTENT_LEN$BR" || echo "$HEADER_CUSTOM$BR")
+
+    local STATIC_RESP="HTTP/1.1$STATUS$HEADERS$BODY"
+
+    print "$STATIC_RESP"
+}
+
 http_response_img() {
     local status_code="$1"
     local status_message="$2"
