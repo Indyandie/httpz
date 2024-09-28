@@ -30,6 +30,9 @@ A meat and potatoes HTTP server written in ZSH, using nc (netcat).
   - navigate directories
   - server files
 - [x] Use Z shell TCP module
+- [ ] Support darwin
+  - [ ] wc - option differ
+  - [ ] file - doesn't specify binary files
 
 ## References
 
