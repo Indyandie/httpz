@@ -77,7 +77,7 @@ http_response_headers() {
     local STATUS=" $status_code $status_message$BR"
 
     local BODY="$4"
-    local body_len=$(print -n $BODY | stat -f %z || print -n 0)
+    local body_len="${#BODY}"
 
     local HEADER_CUSTOM="$3"
     local HEADER_TYPE="content-type: text/html$BR"
