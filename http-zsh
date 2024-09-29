@@ -159,7 +159,8 @@ html_router() {
         fi
         ;;
     "/")
-        ROUTE_PATH_CHARS="$(print -n $ROUTE_PATH | wc --chars)"
+        # TODO: Not sure this is needed
+        ROUTE_PATH_CHARS="${#ROUTE_PATH}"
         if [[ "$ROUTE_PATH_CHARS" > 1 ]]; then
             http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
         elif [ -e "./index.html" ]; then
@@ -228,7 +229,8 @@ file_router() {
         fi
         ;;
     "/")
-        ROUTE_PATH_CHARS="$(print -n $ROUTE_PATH | wc --chars)"
+        # TODO: Not sure this is needed
+        ROUTE_PATH_CHARS="${#ROUTE_PATH}"
         if [[ "$ROUTE_PATH_CHARS" > 1 ]]; then
             http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
         elif [ -e "./index.html" ]; then
