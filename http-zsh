@@ -100,7 +100,7 @@ http_response_headers() {
     local STATUS=" $status_code $status_message$BR"
 
     local BODY="$4"
-    local body_len=$(echo -ne $BODY | wc --chars || echo -ne 0)
+    local body_len=$(echo -ne $BODY | stat -f %z || echo -ne 0)
 
     local HEADER_CUSTOM="$3"
     local HEADER_TYPE="content-type: text/html$BR"
@@ -128,15 +128,8 @@ http_response_neue() {
 
     local BODY_PATH="$3"
     local FILE_EXTENSION="$(echo "$BODY_PATH" | sd '.*\.(\w+)$' '$1')"
-    local BINARY="$(file -i $BODY_PATH | rg --quiet binary && echo true || echo false)"
-    # local BODY=$(cat $BODY_PATH)
 
-    local body_len=0
-    if [[ 'true' = $BINARY ]]; then
-        body_len="$(wc --bytes --total=only $BODY_PATH || echo -ne 0)"
-    else
-        body_len="$(wc --chars --total=only $BODY_PATH || echo -ne 0)"
-    fi
+    local body_len=$(stat -f %z $BODY_PATH || echo -ne 0)
 
     local HEADER_CUSTOM="" # TODO
     local HEADER_TYPE="content-type: $CONTENT_TYPES[$FILE_EXTENSION]$BR"
