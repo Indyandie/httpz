@@ -300,7 +300,7 @@ http-listen() {
 
     while true; do
 
-        if [[ "$verbose" > 0 ]]; then 
+        if [[ "$verbose" > 0 ]]; then
             ztcp -v -a $listenfd && [[ "$verbose" > 0 ]] && print "\n\naccept request...\n"
         else
             ztcp -a $listenfd
@@ -331,7 +331,7 @@ http-listen() {
             done
             req_headers_json+=$(sd '(.*),' '$1}' <<< "$req_headers_json")
 
-            if [[ "$verbose" > 0 ]]; then 
+            if [[ "$verbose" > 0 ]]; then
                 print "method:$req_method\npath: $req_path\nversion: $req_version\n\n"
                 print $req_headers_json
             fi
@@ -380,14 +380,14 @@ http-listen() {
         unset req_method req_path req_version
         unset header_key header_value
 
-        if [[ "$verbose" > 0 ]]; then 
+        if [[ "$verbose" > 0 ]]; then
             ztcp -v -c $fd && print "\n\nclose...\n"
         else
             ztcp -c $fd
         fi
     done
 
-    if [[ "$verbose" > 0 ]]; then 
+    if [[ "$verbose" > 0 ]]; then
         ztcp -vc $listenfd
         ztcp -vc $fd
     else
