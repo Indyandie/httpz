@@ -153,7 +153,7 @@ html_router() {
     case "$ROUTE_PATH" in
     *.html)
         if [ -e ".$ROUTE_PATH" ]; then
-            http_response_headers 200 Ok "" "$(bat ".$ROUTE_PATH")"
+            http_response_headers 200 Ok "" "$(cat ".$ROUTE_PATH")"
         else
             http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
         fi
@@ -173,7 +173,7 @@ html_router() {
     *)
         ROUTE_FILE="./$ROUTE_PATH/index.html"
         if [ -e "$ROUTE_FILE" ]; then
-            http_response_headers 200 Ok "" "$(bat "$ROUTE_FILE")"
+            http_response_headers 200 Ok "" "$(cat "$ROUTE_FILE")"
         else
             http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
         fi
@@ -372,7 +372,7 @@ http-listen() {
             ;;
         -f | --file)
             HTML_RESPONSE=$(file-handler "$req_method" "$req_path")
-            print >&$fd $HTML_RESPONSE && test -f ".$req_path" && bat >&$fd ".$req_path"
+            print >&$fd $HTML_RESPONSE && test -f ".$req_path" && cat >&$fd ".$req_path"
             ;;
         esac
 
