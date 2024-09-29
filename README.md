@@ -6,10 +6,11 @@ A meat and potatoes HTTP server written in ZSH, using nc (netcat).
 
 ### Flags
 
-| flag                                                        | description           |
-| ----------------------------------------------------------- | --------------------- |
-| `-s` (`--static`),<br> `-h` (`--html`),<br> `-f` (`--file`) | Required server type. |
-| `-p` `--port`,                                              | Optional port number. |
+| flag/option                                                 | description                               |
+| ----------------------------------------------------------- | ----------------------------------------- |
+| `-s` (`--static`),<br> `-h` (`--html`),<br> `-f` (`--file`) | Required server type.                     |
+| `-p` `--port`                                               | Optional port number (default is `1234`). |
+| `-v` `--verbose`                                            | Print diagnostics.                        |
 
 ## To Do
 
@@ -30,9 +31,7 @@ A meat and potatoes HTTP server written in ZSH, using nc (netcat).
   - navigate directories
   - server files
 - [x] Use Z shell TCP module
-- [ ] Support darwin
-  - [ ] wc - option differ
-  - [ ] file - doesn't specify binary files
+- [x] Support darwin
 
 ## References
 
