@@ -8,6 +8,7 @@ zparseopts -D -E -F - \
     s=serv_type -static=serv_type \
     h=serv_type -html=serv_type \
     f=serv_type -file=serv_type \
+    v=verbose_flag -verbose=verbose_flag \
     p:=port_value -port:=port_value || exit 1
 
 port_value_error="Error - pass one port option:\n\t(-p|--port)"
@@ -35,6 +36,8 @@ fi
 
 serv_type=${serv_type:0:1}
 
+verbose=${#verbose_flag}
+
 typeset -A conf=(
     PORT $PORT 
     HOST localhost 
@@ -54,6 +57,7 @@ typeset -A CONTENT_TYPES=(
 
 print "port: $conf[PORT]"
 print "host: $conf[HOST]"
+print "server type: $serv_type"
 
 typeset -r BR="\r\n"
 
@@ -87,7 +91,6 @@ http_response_headers() {
 
 typeset -r DEFAULT_BODY="<h1>Hello, world!</h1>"
 typeset -r DEFAULT_RESPONSE=$(http_response_headers 200 Ok "" "$DEFAULT_BODY")
-
 
 #######################################
 # Print a http response for differnt content types
@@ -275,18 +278,26 @@ file-handler() {
 
 http-listen() {
     local PORT=$conf[PORT]
-    ztcp -v -l $PORT && print "listening on $PORT...\n"
+
+    if [[ "$verbose" > 0 ]]; then 
+        ztcp -v -l $PORT && print "listening on $PORT...\n"
+    else
+        ztcp -l $PORT
+    fi
     listenfd=$REPLY
 
     while true; do
 
-        ztcp -v -a $listenfd && print "\n\naccept request...\n"
+        if [[ "$verbose" > 0 ]]; then 
+            ztcp -v -a $listenfd && [[ "$verbose" > 0 ]] && print "\n\naccept request...\n"
+        else
+            ztcp -a $listenfd
+        fi
+
         fd=$REPLY
 
         typeset req_method req_path req_version
         read -r -u $fd req_method req_path req_version || print noheader
-
-        print "method:$req_method\npath: $req_path\nversion: $req_version\n\n"
 
         typeset -A req_headers
         typeset header_key header_value
@@ -301,7 +312,11 @@ http-listen() {
             req_headers_json+="\"$key\":\"${req_headers[$key]}\","
         done
         req_headers_json+=$(sd '(.*),' '$1}' <<< "$req_headers_json")
-        print $req_headers_json
+
+        if [[ "$verbose" > 0 ]]; then 
+            print "method:$req_method\npath: $req_path\nversion: $req_version\n\n"
+            print $req_headers_json
+        fi
 
         if [[ "${req_headers[Content-Length]}" > 0 ]]; then
             typeset req_body=""
@@ -347,11 +362,20 @@ http-listen() {
         unset req_method req_path req_version
         unset header_key header_value
 
-        ztcp -v -c $fd && print "\n\nclose...\n"
+        if [[ "$verbose" > 0 ]]; then 
+            ztcp -v -c $fd && print "\n\nclose...\n"
+        else
+            ztcp -c $fd
+        fi
     done
 
-    ztcp -vc $listenfd
-    ztcp -vc $fd
+    if [[ "$verbose" > 0 ]]; then 
+        ztcp -vc $listenfd
+        ztcp -vc $fd
+    else
+        ztcp -c $listenfd
+        ztcp -c $fd
+    fi
 }
 
 http-listen
