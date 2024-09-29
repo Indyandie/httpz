@@ -34,7 +34,7 @@ if [[ "${#serv_type}" != 1 ]]; then
     print "$server_type_error" && exit
 fi
 
-serv_type=${serv_type:0:1}
+serv_type=${serv_type[1]}
 
 verbose=${#verbose_flag}
 
