@@ -16,9 +16,11 @@ if [[ "${#port_value}" -ne "2" && "${#port_value}" -gt "1" ]]; then
     echo "$port_value_error" && exit
 fi
 
-case "${port_value:0:1}" in
+# case "${port_value:0:1}" in
+case "${port_value[1]}" in
 -p | --port)
-    readonly PORT="${port_value:1:1}"
+    # readonly PORT="${port_value:1:1}"
+    readonly PORT="${port_value[-1]}"
     ;;
 *)
     readonly PORT=1234
@@ -70,7 +72,7 @@ http_response() {
     local STATUS=" $status_code $status_message$BR"
 
     local BODY="$3"
-    local body_len=$(echo -ne $BODY | wc --chars || echo -ne 0)
+    local body_len=$(echo -ne $BODY | stat -f %z || echo -ne 0)
 
     local HEADERS="content-length: $body_len${BR}content-type: text/html$BR$BR"
     if [[ 0 = "$body_len" ]]; then
