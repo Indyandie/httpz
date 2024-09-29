@@ -117,7 +117,7 @@ http_response_neue() {
     local STATUS=" $status_code $status_message$BR"
 
     local BODY_PATH="$3"
-    local FILE_EXTENSION="$(print "$BODY_PATH" | sd '.*\.(\w+)$' '$1')"
+    local FILE_EXTENSION="${BODY_PATH##/.}"
 
     local body_len=$(zstat +size "$BODY_PATH" || print -n 0)
 
