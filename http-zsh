@@ -1,6 +1,7 @@
 #!/usr/bin/env zsh
 
 zmodload zsh/net/tcp
+zmodload -F zsh/stat b:zstat
 
 # ztcp -vcf
 
@@ -118,7 +119,7 @@ http_response_neue() {
     local BODY_PATH="$3"
     local FILE_EXTENSION="$(print "$BODY_PATH" | sd '.*\.(\w+)$' '$1')"
 
-    local body_len=$(stat -f %z $BODY_PATH || print -n 0)
+    local body_len=$(zstat +size "$BODY_PATH" || print -n 0)
 
     local HEADER_CUSTOM="" # TODO
     local HEADER_TYPE="content-type: $CONTENT_TYPES[$FILE_EXTENSION]$BR"
