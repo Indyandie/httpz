@@ -112,28 +112,6 @@ http_response_headers() {
     print "$STATIC_RESP"
 }
 
-http_response_img() {
-    local status_code="$1"
-    local status_message="$2"
-    local STATUS=" $status_code $status_message$BR"
-
-    local BODY_PATH="$3"
-    local CONTENT_TYPE="$(echo "$BODY_PATH" | sd '.*\.(\w+)$' '$1')"
-    local BODY=$(cat $BODY_PATH)
-    local body_len="$(wc --bytes --total=only $BODY_PATH || echo -ne 0)"
-
-    local HEADERS="accept-ranges: bytes${BR}content-length: $body_len${BR}content-type: image/$CONTENT_TYPE$BR$BR"
-    if [[ 0 = "$body_len" ]]; then
-        HEADERS="$BR"
-    fi
-
-    # local STATIC_RESP="HTTP/1.1$STATUS$HEADERS$BODY"
-    local STATIC_RESP="HTTP/1.1$STATUS$HEADERS"
-
-    # echo -ne "$STATIC_RESP"
-    print "$STATIC_RESP"
-}
-
 #######################################
 # Print a http response for differnt content types
 # Arguments:
