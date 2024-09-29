@@ -44,6 +44,15 @@ typeset -A conf=(
     CHUNK_SIZE 1024
 )
 
+typeset -A SERVER_TYPE=(
+    -s static
+    --static static
+    -h html
+    --html html
+    -f file
+    --file file
+)
+
 typeset -A CONTENT_TYPES=(
     html text/html
     css text/css
@@ -57,7 +66,7 @@ typeset -A CONTENT_TYPES=(
 
 print "port: $conf[PORT]"
 print "host: $conf[HOST]"
-print "server type: $serv_type"
+print "server type: $SERVER_TYPE[$serv_type]"
 
 typeset -r BR="\r\n"
 
@@ -279,7 +288,7 @@ file-handler() {
 http-listen() {
     local PORT=$conf[PORT]
 
-    if [[ "$verbose" > 0 ]]; then 
+    if [[ "$verbose" > 0 ]]; then
         ztcp -v -l $PORT && print "listening on $PORT...\n"
     else
         ztcp -l $PORT
@@ -297,52 +306,54 @@ http-listen() {
         fd=$REPLY
 
         typeset req_method req_path req_version
-        read -r -u $fd req_method req_path req_version || print noheader
-
         typeset -A req_headers
         typeset header_key header_value
 
-        while read -r -u $fd header_key header_value && [[ $header_key != $'\r' ]] && [[ -n $header_value ]]; do
-            header_key=$(tr -d ':' <<< "$header_key")
-            req_headers[$header_key]=$(tr -d '\r' <<< $header_value)
-        done
+        if [[ "static" != "$SERVER_TYPE[$serv_type]" ]]; then
+            read -r -u $fd req_method req_path req_version || print noheader
 
-        typeset req_headers_json="\"headers\": {"
-        for key in "${(@k)req_headers}"; do
-            req_headers_json+="\"$key\":\"${req_headers[$key]}\","
-        done
-        req_headers_json+=$(sd '(.*),' '$1}' <<< "$req_headers_json")
 
-        if [[ "$verbose" > 0 ]]; then 
-            print "method:$req_method\npath: $req_path\nversion: $req_version\n\n"
-            print $req_headers_json
+            while read -r -u $fd header_key header_value && [[ $header_key != $'\r' ]] && [[ -n $header_value ]]; do
+                header_key=$(tr -d ':' <<< "$header_key")
+                req_headers[$header_key]=$(tr -d '\r' <<< $header_value)
+            done
+
+            typeset req_headers_json='"headers": {'
+            for key in "${(@k)req_headers}"; do
+                req_headers_json+="\"$key\":\"${req_headers[$key]}\","
+            done
+            req_headers_json+=$(sd '(.*),' '$1}' <<< "$req_headers_json")
+
+            if [[ "$verbose" > 0 ]]; then 
+                print "method:$req_method\npath: $req_path\nversion: $req_version\n\n"
+                print $req_headers_json
+            fi
+
+            if [[ "${req_headers[Content-Length]}" > 0 ]]; then
+                typeset req_body=""
+
+                case $req_method in
+                    ('GET'| 'HEAD'| 'TRACE')
+                        # do nothing
+                        unset  req_body req_body_json
+                    ;;
+                    (*)
+                        while true; do
+                            chunk=$(timeout 0.01 dd bs=$CHUNK_SIZE count=1 <&$fd 2>/dev/null)
+
+                            if [[ $? -ne 0 || -z "$chunk" ]]; then
+                                break
+                            fi
+
+                            req_body+=$chunk
+                        done
+
+                        typeset req_body_json="\"body\":\"$req_body\""
+                        print $req_body_json
+                    ;;
+                esac
+            fi
         fi
-
-        if [[ "${req_headers[Content-Length]}" > 0 ]]; then
-            typeset req_body=""
-
-            case $req_method in
-                ('GET'| 'HEAD'| 'TRACE')
-                    # do nothing
-                    unset  req_body req_body_json
-                ;;
-                (*)
-                    while true; do
-                        chunk=$(timeout 0.01 dd bs=$CHUNK_SIZE count=1 <&$fd 2>/dev/null)
-
-                        if [[ $? -ne 0 || -z "$chunk" ]]; then
-                            break
-                        fi
-
-                        req_body+=$chunk
-                    done
-
-                    typeset req_body_json="\"body\":\"$req_body\""
-                    print $req_body_json
-                ;;
-            esac
-        fi
-
 
         case "$serv_type" in
         -s | --static)
