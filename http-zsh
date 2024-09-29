@@ -13,7 +13,7 @@ zparseopts -D -E -F - \
 port_value_error="Error - pass one port option:\n\t(-p|--port)"
 
 if [[ "${#port_value}" -ne "2" && "${#port_value}" -gt "1" ]]; then
-    echo "$port_value_error" && exit
+    print "$port_value_error" && exit
 fi
 
 # case "${port_value:0:1}" in
@@ -30,7 +30,7 @@ esac
 server_type_error="Error - pass one server type option:\n\tstatic (-s|--static)\n\thtml (-h|--html)"
 
 if [[ "${#serv_type}" != 1 ]]; then
-    echo "$server_type_error" && exit
+    print "$server_type_error" && exit
 fi
 
 serv_type=${serv_type:0:1}
@@ -52,8 +52,8 @@ typeset -A CONTENT_TYPES=(
     js application/javascript
 )
 
-echo "port: $conf[PORT]"
-echo "host: $conf[HOST]"
+print "port: $conf[PORT]"
+print "host: $conf[HOST]"
 
 typeset -r BR="\r\n"
 
@@ -73,12 +73,12 @@ http_response_headers() {
     local STATUS=" $status_code $status_message$BR"
 
     local BODY="$4"
-    local body_len=$(echo -ne $BODY | stat -f %z || echo -ne 0)
+    local body_len=$(print -n $BODY | stat -f %z || print -n 0)
 
     local HEADER_CUSTOM="$3"
     local HEADER_TYPE="content-type: text/html$BR"
-    local HEADER_CONTENT_LEN=$([[ 0 = $body_len ]] && echo -ne "" || echo -ne "content-length: $body_len${BR}")
-    local HEADERS=$([[ "" = $HEADER_CUSTOM ]] && echo "$HEADER_TYPE$HEADER_CONTENT_LEN$BR" || echo "$HEADER_CUSTOM$BR")
+    local HEADER_CONTENT_LEN=$([[ 0 = $body_len ]] && print -n "" || print -n "content-length: $body_len${BR}")
+    local HEADERS=$([[ "" = $HEADER_CUSTOM ]] && print "$HEADER_TYPE$HEADER_CONTENT_LEN$BR" || print "$HEADER_CUSTOM$BR")
 
     local STATIC_RESP="HTTP/1.1$STATUS$HEADERS$BR$BR$BODY"
 
@@ -104,14 +104,14 @@ http_response_neue() {
     local STATUS=" $status_code $status_message$BR"
 
     local BODY_PATH="$3"
-    local FILE_EXTENSION="$(echo "$BODY_PATH" | sd '.*\.(\w+)$' '$1')"
+    local FILE_EXTENSION="$(print "$BODY_PATH" | sd '.*\.(\w+)$' '$1')"
 
-    local body_len=$(stat -f %z $BODY_PATH || echo -ne 0)
+    local body_len=$(stat -f %z $BODY_PATH || print -n 0)
 
     local HEADER_CUSTOM="" # TODO
     local HEADER_TYPE="content-type: $CONTENT_TYPES[$FILE_EXTENSION]$BR"
     local HEADER_CONTENT_LEN="content-length: $body_len$BR"
-    local HEADERS="$([[ "" = $HEADER_CUSTOM ]] && echo "accept-ranges: bytes${BR}$HEADER_TYPE$HEADER_CONTENT_LEN$BR" || echo "$HEADER_CUSTOM$BR")"
+    local HEADERS="$([[ "" = $HEADER_CUSTOM ]] && print "accept-ranges: bytes${BR}$HEADER_TYPE$HEADER_CONTENT_LEN$BR" || print "$HEADER_CUSTOM$BR")"
 
     local STATIC_RESP="HTTP/1.1$STATUS$HEADERS"
 
@@ -146,7 +146,7 @@ html_router() {
         fi
         ;;
     "/")
-        ROUTE_PATH_CHARS="$(echo -n $ROUTE_PATH | wc --chars)"
+        ROUTE_PATH_CHARS="$(print -n $ROUTE_PATH | wc --chars)"
         if [[ "$ROUTE_PATH_CHARS" > 1 ]]; then
             http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
         elif [ -e "./index.html" ]; then
@@ -174,15 +174,15 @@ html-handler() {
     case $HANDLER_METHOD in
     "GET")
         RESP_200=$(html_router "$HANDLER_PATH")
-        echo -ne $RESP_200
+        print -n $RESP_200
         ;;
     "HEAD")
         RESP_501=$(http_response_headers 501 "Not Implemented" "" "")
-        echo -ne $RESP_501
+        print -n $RESP_501
         ;;
     *)
         RESP_501=$(http_response_headers 501 "Not Implemented" "" "<p>Unsupported method ($HANDLER_METHOD)</p>")
-        echo -ne $RESP_501
+        print -n $RESP_501
         ;;
     esac
 }
@@ -215,7 +215,7 @@ file_router() {
         fi
         ;;
     "/")
-        ROUTE_PATH_CHARS="$(echo -n $ROUTE_PATH | wc --chars)"
+        ROUTE_PATH_CHARS="$(print -n $ROUTE_PATH | wc --chars)"
         if [[ "$ROUTE_PATH_CHARS" > 1 ]]; then
             http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
         elif [ -e "./index.html" ]; then
@@ -259,7 +259,7 @@ file-handler() {
     case $HANDLER_METHOD in
     "GET")
         # RESP_200=$(file_router "$HANDLER_PATH")
-        # echo -ne $RESP_200
+        # print -n $RESP_200
         print "$(file_router "$HANDLER_PATH")"
         ;;
     "HEAD")
@@ -275,18 +275,18 @@ file-handler() {
 
 http-listen() {
     local PORT=$conf[PORT]
-    ztcp -v -l $PORT && echo "listening on $PORT...\n"
+    ztcp -v -l $PORT && print "listening on $PORT...\n"
     listenfd=$REPLY
 
     while true; do
 
-        ztcp -v -a $listenfd && echo "\n\naccept request...\n"
+        ztcp -v -a $listenfd && print "\n\naccept request...\n"
         fd=$REPLY
 
         typeset req_method req_path req_version
-        read -r -u $fd req_method req_path req_version || echo noheader
+        read -r -u $fd req_method req_path req_version || print noheader
 
-        echo "method:$req_method\npath: $req_path\nversion: $req_version\n\n"
+        print "method:$req_method\npath: $req_path\nversion: $req_version\n\n"
 
         typeset -A req_headers
         typeset header_key header_value
@@ -301,7 +301,7 @@ http-listen() {
             req_headers_json+="\"$key\":\"${req_headers[$key]}\","
         done
         req_headers_json+=$(sd '(.*),' '$1}' <<< "$req_headers_json")
-        echo $req_headers_json
+        print $req_headers_json
 
         if [[ "${req_headers[Content-Length]}" > 0 ]]; then
             typeset req_body=""
@@ -323,7 +323,7 @@ http-listen() {
                     done
 
                     typeset req_body_json="\"body\":\"$req_body\""
-                    echo $req_body_json
+                    print $req_body_json
                 ;;
             esac
         fi
@@ -331,11 +331,11 @@ http-listen() {
 
         case "$serv_type" in
         -s | --static)
-            echo $DEFAULT_RESPONSE >&$fd
+            print $DEFAULT_RESPONSE >&$fd
             ;;
         -h | --html)
             HTML_RESPONSE=$(html-handler "$req_method" "$req_path")
-            echo $HTML_RESPONSE >&$fd
+            print $HTML_RESPONSE >&$fd
             ;;
         -f | --file)
             HTML_RESPONSE=$(file-handler "$req_method" "$req_path")
@@ -347,7 +347,7 @@ http-listen() {
         unset req_method req_path req_version
         unset header_key header_value
 
-        ztcp -v -c $fd && echo "\n\nclose...\n"
+        ztcp -v -c $fd && print "\n\nclose...\n"
     done
 
     ztcp -vc $listenfd
