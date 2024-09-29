@@ -58,33 +58,6 @@ echo "host: $conf[HOST]"
 typeset -r BR="\r\n"
 
 #######################################
-# Open a tcp socket and listen for http requests
-# Arguments:
-#   status_code
-#   status_message
-#   bodys
-# Outputs:
-#   HTTP Response (text/html)
-#######################################
-http_response() {
-    local status_code="$1"
-    local status_message="$2"
-    local STATUS=" $status_code $status_message$BR"
-
-    local BODY="$3"
-    local body_len=$(echo -ne $BODY | stat -f %z || echo -ne 0)
-
-    local HEADERS="content-length: $body_len${BR}content-type: text/html$BR$BR"
-    if [[ 0 = "$body_len" ]]; then
-        HEADERS="$BR"
-    fi
-
-    local STATIC_RESP="HTTP/1.1$STATUS$HEADERS$BODY"
-
-    print "$STATIC_RESP"
-}
-
-#######################################
 # Print a http response with predifined headers
 # Arguments:
 #   status_code
@@ -104,13 +77,17 @@ http_response_headers() {
 
     local HEADER_CUSTOM="$3"
     local HEADER_TYPE="content-type: text/html$BR"
-    local HEADER_CONTENT_LEN=$([[ 0 = $body_len ]] && echo "content-length: $body_len${BR}")
+    local HEADER_CONTENT_LEN=$([[ 0 = $body_len ]] && echo -ne "" || echo -ne "content-length: $body_len${BR}")
     local HEADERS=$([[ "" = $HEADER_CUSTOM ]] && echo "$HEADER_TYPE$HEADER_CONTENT_LEN$BR" || echo "$HEADER_CUSTOM$BR")
 
-    local STATIC_RESP="HTTP/1.1$STATUS$HEADERS$BODY"
+    local STATIC_RESP="HTTP/1.1$STATUS$HEADERS$BR$BR$BODY"
 
     print "$STATIC_RESP"
 }
+
+typeset -r DEFAULT_BODY="<h1>Hello, world!</h1>"
+typeset -r DEFAULT_RESPONSE=$(http_response_headers 200 Ok "" "$DEFAULT_BODY")
+
 
 #######################################
 # Print a http response for differnt content types
@@ -141,9 +118,6 @@ http_response_neue() {
     print "$STATIC_RESP"
 }
 
-typeset -r DEFAULT_BODY="<h1>Hello, world!</h1>"
-typeset -r DEFAULT_RESPONSE=$(http_response 200 Ok "$DEFAULT_BODY")
-
 typeset -r CHUNK_SIZE=1024
 
 #######################################
@@ -166,28 +140,28 @@ html_router() {
     case "$ROUTE_PATH" in
     *.html)
         if [ -e ".$ROUTE_PATH" ]; then
-            http_response 200 Ok "$(bat ".$ROUTE_PATH")"
+            http_response_headers 200 Ok "" "$(bat ".$ROUTE_PATH")"
         else
-            http_response 404 "Not found" "<p>Page not found.</p>"
+            http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
         fi
         ;;
     "/")
         ROUTE_PATH_CHARS="$(echo -n $ROUTE_PATH | wc --chars)"
         if [[ "$ROUTE_PATH_CHARS" > 1 ]]; then
-            http_response 404 "Not found" "<p>Page not found.</p>"
+            http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
         elif [ -e "./index.html" ]; then
             local BODY=$(cat ".${ROUTE_PATH}index.html")
-            http_response 200 Ok "$BODY"
+            http_response_headers 200 Ok "" "$BODY"
         else
-            http_response 404 "Not found" "<p>Page not found.</p>"
+            http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
         fi
         ;;
     *)
         ROUTE_FILE="./$ROUTE_PATH/index.html"
         if [ -e "$ROUTE_FILE" ]; then
-            http_response 200 Ok "$(bat "$ROUTE_FILE")"
+            http_response_headers 200 Ok "" "$(bat "$ROUTE_FILE")"
         else
-            http_response 404 "Not found" "<p>Page not found.</p>"
+            http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
         fi
         ;;
     esac
@@ -203,11 +177,11 @@ html-handler() {
         echo -ne $RESP_200
         ;;
     "HEAD")
-        RESP_501=$(http_response 501 "Not Implemented" "")
+        RESP_501=$(http_response_headers 501 "Not Implemented" "" "")
         echo -ne $RESP_501
         ;;
     *)
-        RESP_501=$(http_response 501 "Not Implemented" "<p>Unsupported method ($HANDLER_METHOD)</p>")
+        RESP_501=$(http_response_headers 501 "Not Implemented" "" "<p>Unsupported method ($HANDLER_METHOD)</p>")
         echo -ne $RESP_501
         ;;
     esac
@@ -223,57 +197,56 @@ file_router() {
         if [ -e ".$ROUTE_PATH" ]; then
             http_response_neue 200 Ok ".$ROUTE_PATH"
         else
-            http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_headers 404 "Not found" "" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     *.png | *.gif | *.jpeg | *.jpg | *.webp )
         if [ -e ".$ROUTE_PATH" ]; then
             http_response_neue 200 Ok ".$ROUTE_PATH"
         else
-            http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_headers 404 "Not found" "" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     *.html)
         if [ -e ".$ROUTE_PATH" ]; then
             http_response_neue 200 Ok ".$ROUTE_PATH" 
         else
-            http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_headers 404 "Not found" "" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     "/")
         ROUTE_PATH_CHARS="$(echo -n $ROUTE_PATH | wc --chars)"
         if [[ "$ROUTE_PATH_CHARS" > 1 ]]; then
-            http_response 404 "Not found" "<p>Page not found.</p>"
+            http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
         elif [ -e "./index.html" ]; then
             local BODY=$(cat ".${ROUTE_PATH}index.html")
-            http_response 200 Ok "$BODY"
+            http_response_headers 200 Ok "" "$BODY"
         else
-            http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_headers 404 "Not found" "" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     */)
         ROUTE_FILE="./${ROUTE_PATH}index.html"
         if [ -e "$ROUTE_FILE" ]; then
-            http_response 200 Ok "$(cat "$ROUTE_FILE")"
+            http_response_headers 200 Ok "" "$(cat "$ROUTE_FILE")"
         else
-            http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_headers 404 "Not found" "" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     */[a-zA-Z0-9_]##)
         ROUTE_FILE="./$ROUTE_PATH/index.html"
         if [ -e "$ROUTE_FILE" ]; then
-            # http_response 200 Ok "$(cat "$ROUTE_FILE")"
             http_response_headers 301 "Move Permanently" "LOCATION: http://localhost:$conf[PORT]$ROUTE_PATH/$BR" ""
         else
-            http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_headers 404 "Not found" "" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     *)
         ROUTE_FILE="./$ROUTE_PATH/index.html"
         if [ -e "$ROUTE_FILE" ]; then
-            http_response 200 Ok "$(cat "$ROUTE_FILE")"
+            http_response_headers 200 Ok "" "$(cat "$ROUTE_FILE")"
         else
-            http_response 404 "Not found" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_headers 404 "Not found" "" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     esac
@@ -290,11 +263,11 @@ file-handler() {
         print "$(file_router "$HANDLER_PATH")"
         ;;
     "HEAD")
-        RESP_501=$(http_response 501 "Not Implemented" "")
+        RESP_501=$(http_response_headers 501 "Not Implemented" "" "")
         print $RESP_501
         ;;
     *)
-        RESP_501=$(http_response 501 "Not Implemented" "<p>Unsupported method ($HANDLER_METHOD)</p>")
+        RESP_501=$(http_response_headers 501 "Not Implemented" "" "<p>Unsupported method ($HANDLER_METHOD)</p>")
         print $RESP_501
         ;;
     esac
