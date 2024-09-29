@@ -313,7 +313,11 @@ http-listen() {
         typeset header_key header_value
 
         if [[ "static" != "$SERVER_TYPE[$serv_type]" ]]; then
-            read -r -u $fd req_method req_path req_version || print noheader
+            if [[ "$verbose" > 0 ]]; then
+                read -r -u $fd req_method req_path req_version || print "no header return" && ztcp -v -c $fd && print "\n\nclose...\n"
+            else
+                read -r -u $fd req_method req_path req_version || ztcp -c $fd
+            fi
 
 
             while read -r -u $fd header_key header_value && [[ $header_key != $'\r' ]] && [[ -n $header_value ]]; do
