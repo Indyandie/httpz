@@ -372,7 +372,7 @@ http-listen() {
             ;;
         -f | --file)
             HTML_RESPONSE=$(file-handler "$req_method" "$req_path")
-            print >&$fd $HTML_RESPONSE && test -f ".$req_path" && cat >&$fd ".$req_path"
+            print >&$fd $HTML_RESPONSE && [[ -f ".$req_path" ]] && cat >&$fd ".$req_path"
             ;;
         esac
 
