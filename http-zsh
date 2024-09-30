@@ -37,7 +37,7 @@ fi
 
 serv_type=${serv_type[1]}
 
-verbose=${#verbose_flag}
+typeset -r verbose=${#verbose_flag}
 
 typeset -A conf=(
     PORT $PORT 
@@ -293,10 +293,11 @@ http-listen() {
 
     if [[ "$verbose" > 0 ]]; then
         ztcp -v -l $PORT && print "listening on $PORT...\n"
+        local listenfd=$REPLY
     else
         ztcp -l $PORT
+        local listenfd=$REPLY
     fi
-    listenfd=$REPLY
 
     while true; do
 
@@ -314,9 +315,9 @@ http-listen() {
 
         if [[ "static" != "$SERVER_TYPE[$serv_type]" ]]; then
             if [[ "$verbose" > 0 ]]; then
-                read -r -u $fd req_method req_path req_version || print "no header return" && ztcp -v -c $fd && print "\n\nclose...\n"
+                read -r -u $fd req_method req_path req_version || print "no header returned"
             else
-                read -r -u $fd req_method req_path req_version || ztcp -c $fd
+                read -r -u $fd req_method req_path req_version
             fi
 
 
