@@ -29,7 +29,7 @@ case "${port_value[1]}" in
     ;;
 esac
 
-server_type_error="Error - pass one server type option:\n\tstatic (-s|--static)\n\thtml (-h|--html)"
+server_type_error="Error - pass one server type option:\n\tstatic (-s|--static)\n\thtml (-h|--html)\n\tfile (-f|--file)"
 
 if [[ "${#serv_type}" != 1 ]]; then
     print "$server_type_error" && exit
