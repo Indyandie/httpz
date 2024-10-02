@@ -63,6 +63,8 @@ typeset -A CONTENT_TYPES=(
     jpg image/jpg
     webp image/webp
     js application/javascript
+    yml application/yaml
+    yaml application/yaml
 )
 
 print "port: $conf[PORT]"
@@ -207,7 +209,7 @@ file_router() {
     setopt EXTENDED_GLOB
 
     case "$ROUTE_PATH" in
-    *.js | *.css )
+    *.js | *.css | *.yml | *.yaml )
         if [ -e ".$ROUTE_PATH" ]; then
             http_response_neue 200 Ok ".$ROUTE_PATH"
         else
@@ -373,6 +375,9 @@ http-listen() {
             ;;
         -f | --file)
             HTML_RESPONSE=$(file-handler "$req_method" "$req_path")
+            if [[ "$verbose" > 0 ]]; then
+                print $HTML_RESPONSE
+            fi
             print >&$fd $HTML_RESPONSE && [[ -f ".$req_path" ]] && cat >&$fd ".$req_path"
             ;;
         esac
