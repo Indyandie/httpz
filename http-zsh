@@ -65,6 +65,7 @@ typeset -A CONTENT_TYPES=(
     js application/javascript
     yml application/yaml
     yaml application/yaml
+    json application/json
 )
 
 print "port: $conf[PORT]"
@@ -209,7 +210,7 @@ file_router() {
     setopt EXTENDED_GLOB
 
     case "$ROUTE_PATH" in
-    *.js | *.css | *.yml | *.yaml )
+    *.js | *.css | *.yml | *.yaml | *.json )
         if [ -e ".$ROUTE_PATH" ]; then
             http_response_neue 200 Ok ".$ROUTE_PATH"
         else
