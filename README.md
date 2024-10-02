@@ -24,8 +24,8 @@ A meat and potatoes HTTP server written in ZSH.
     - [x] WEBP
   - [x] JS
   - [x] CSS
-  - [ ] JSON
-  - [ ] YAML
+  - [x] JSON
+  - [x] YAML
   - list files
   - list directories
   - navigate directories
