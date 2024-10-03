@@ -325,8 +325,8 @@ http-listen() {
 
 
             while read -r -u $fd header_key header_value && [[ $header_key != $'\r' ]] && [[ -n $header_value ]]; do
-                header_key=$(tr -d ':' <<< "$header_key")
-                req_headers[$header_key]=$(tr -d '\r' <<< $header_value)
+                header_key="${header_key:0:-1}"
+                req_headers[$header_key]="${header_value:0:-1}"
             done
 
             typeset req_headers_json='"headers": {'
