@@ -326,18 +326,20 @@ http-listen() {
 
             while read -r -u $fd header_key header_value && [[ $header_key != $'\r' ]] && [[ -n $header_value ]]; do
                 header_key="${header_key:0:-1}"
-                req_headers[$header_key]="${header_value:0:-1}"
+                header_value="${header_value:0:-1}"
+                req_headers[$header_key]="${header_value//\"/\\\\\"}"
             done
 
-            typeset req_headers_json='"headers": {'
+            typeset req_headers_json='"headers": {\n'
             for key in "${(@k)req_headers}"; do
-                req_headers_json+="\"$key\":\"${req_headers[$key]}\","
+                req_headers_json+="\"$key\": \"${req_headers[$key]}\",\n"
             done
-            req_headers_json+=$(sd '(.*),' '$1}' <<< "$req_headers_json")
+
+            req_headers_json="\{${req_headers_json:0:-3}\}\}" # close the json object
 
             if [[ "$verbose" > 0 ]]; then
                 print "method:$req_method\npath: $req_path\nversion: $req_version\n\n"
-                print $req_headers_json
+                print "$req_headers_json\n\n"
             fi
 
             if [[ "${req_headers[Content-Length]}" > 0 ]]; then
@@ -359,7 +361,7 @@ http-listen() {
                             req_body+=$chunk
                         done
 
-                        typeset req_body_json="\"body\":\"$req_body\""
+                        typeset req_body_json="\"body\": \"$req_body\""
                         print $req_body_json
                     ;;
                 esac
