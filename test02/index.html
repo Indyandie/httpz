@@ -4,23 +4,67 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=, initial-scale=" />
     <title>Test</title>
+    <!-- <script type="application/javascript" src="./script.js"></script> -->
+    <link rel="stylesheet" href="../css/pico.min.css" />
   </head>
   <body>
-    <h1>Test</h1>
-    <p>This is a test page</p>
-    <form action="/unsupported-path" method="POST">
-      <button>submit</button>
-    </form>
-    <section>
-      <h2>Images</h2>
-      <ul>
-        <li>
-          <img src="../image/earth.gif" alt="planet earth" />
-        </li>
-        <li>
-          <img src="../image/rfc-9110-cover.jpeg" alt="planet earth" />
-        </li>
-      </ul>
-    </section>
+    <header
+      class="container"
+      style="display: flex; justify-content: space-between"
+    >
+      <h1><a href="/">HTTP Z Shell</a></h1>
+      <nav>
+        <ul>
+          <li><a href="/test">test</a></li>
+          <li><a href="/test02" aria-current="page">test02</a></li>
+          <li><a href="/openapi">openapi</a></li>
+        </ul>
+      </nav>
+    </header>
+    <main class="container" style="display: flex">
+      <div style="width: 80%">
+        <article>
+          <p>This is <b>another</b> test page...</p>
+        </article>
+        <hr />
+        <section>
+          <h2>Form <code>GET</code></h2>
+          <p>This will generate an error.</p>
+          <footer>
+            <form action="/unsupported-path" method="GET">
+              <button>submit</button>
+            </form>
+          </footer>
+        </section>
+        <hr />
+        <section>
+          <h2>Images</h2>
+          <ul class="grid">
+            <li>
+              <img
+                style="width: 50%"
+                src="../image/earth.gif"
+                alt="planet earth"
+              />
+            </li>
+            <li>
+              <img
+                style="width: 50%"
+                src="../image/rfc-9110-cover.jpeg"
+                alt="planet earth"
+              />
+            </li>
+          </ul>
+        </section>
+      </div>
+      <aside>
+        <nav>
+          <ul>
+            <li><a class="secondary" href="/test02/list.html">list.html</a></li>
+            <li><a class="secondary" href="/test02/script.js">script.js</a></li>
+          </ul>
+        </nav>
+      </aside>
+    </main>
   </body>
 </html>
