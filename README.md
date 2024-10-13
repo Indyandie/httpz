@@ -4,7 +4,7 @@ A meat and potatoes HTTP server written in ZSH.
 
 ## Usage
 
-### Flags
+### Flags & Options
 
 | flag/option                                                 | description                               |
 | ----------------------------------------------------------- | ----------------------------------------- |
@@ -15,6 +15,7 @@ A meat and potatoes HTTP server written in ZSH.
 ## To Do
 
 - [ ] Separate query string, split parameters into an associative array
+- [ ] add help option `-h`, `--help`
 - [x] Read response
 - [ ] file server
   - [x] images
@@ -22,6 +23,7 @@ A meat and potatoes HTTP server written in ZSH.
     - [x] JPEG
     - [x] GIF
     - [x] WEBP
+    - [ ] SVG
   - [x] JS
   - [x] CSS
   - [x] JSON
@@ -32,6 +34,7 @@ A meat and potatoes HTTP server written in ZSH.
   - server files
 - [x] Use Z shell TCP module
 - [x] Support darwin
+- [ ] HTTP 2.0 support
 
 ## References
 
