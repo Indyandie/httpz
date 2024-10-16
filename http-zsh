@@ -132,6 +132,7 @@ http_response_neue() {
     local STATIC_RESP="HTTP/1.1$STATUS$HEADERS"
 
     print "$STATIC_RESP"
+    cat "$BODY_PATH"
 }
 
 typeset -r CHUNK_SIZE=1024
@@ -276,17 +277,13 @@ file-handler() {
 
     case $HANDLER_METHOD in
     "GET")
-        # RESP_200=$(file_router "$HANDLER_PATH")
-        # print -n $RESP_200
-        print "$(file_router "$HANDLER_PATH")"
+        file_router "$HANDLER_PATH"
         ;;
     "HEAD")
-        RESP_501=$(http_response_headers 501 "Not Implemented" "" "")
-        print $RESP_501
+        http_response_headers 501 "Not Implemented" "" ""
         ;;
     *)
-        RESP_501=$(http_response_headers 501 "Not Implemented" "" "<p>Unsupported method ($HANDLER_METHOD)</p>")
-        print $RESP_501
+        http_response_headers 501 "Not Implemented" "" "<p>Unsupported method ($HANDLER_METHOD)</p>"
         ;;
     esac
 }
@@ -377,11 +374,11 @@ http-listen() {
             print $HTML_RESPONSE >&$fd
             ;;
         -f | --file)
-            HTML_RESPONSE=$(file-handler "$req_method" "$req_path")
             if [[ "$verbose" > 0 ]]; then
-                print $HTML_RESPONSE
+                (file-handler "$req_method" "$req_path") >&1 >&$fd
+            else
+                (file-handler "$req_method" "$req_path") >&$fd
             fi
-            print >&$fd $HTML_RESPONSE && [[ -f ".$req_path" ]] && cat >&$fd ".$req_path"
             ;;
         esac
 
