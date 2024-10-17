@@ -75,42 +75,13 @@ print "server type: $SERVER_TYPE[$serv_type]"
 typeset -r BR="\r\n"
 
 #######################################
-# Print a http response with predifined headers
-# Arguments:
-#   status_code
-#   status_message
-#   HEADER_CUSTOM
-#   BODY
-# Outputs:
-#   HTTP Response
-#######################################
-http_response_headers() {
-    local status_code="$1"
-    local status_message="$2"
-    local STATUS=" $status_code $status_message$BR"
-
-    local BODY="$4"
-    local body_len="${#BODY}"
-
-    local HEADER_CUSTOM="$3"
-    local HEADER_TYPE="content-type: text/html$BR"
-    local HEADER_CONTENT_LEN=$([[ 0 = $body_len ]] && print -n "" || print -n "content-length: $body_len${BR}")
-    local HEADERS=$([[ "" = $HEADER_CUSTOM ]] && print "$HEADER_TYPE$HEADER_CONTENT_LEN$BR" || print "$HEADER_CUSTOM$BR")
-
-    local STATIC_RESP="HTTP/1.1$STATUS$HEADERS$BR$BR$BODY"
-
-    print "$STATIC_RESP"
-}
-
-typeset -r DEFAULT_BODY="<h1>Hello, world!</h1>"
-typeset -r DEFAULT_RESPONSE=$(http_response_headers 200 Ok "" "$DEFAULT_BODY")
-
-#######################################
 # Print a http response for differnt content types
 # Arguments:
 #   status_code
 #   status_message
 #   BODY_PATH
+#   HEADER_CUSTOM
+#   BODY
 # Outputs:
 #   HTTP Response
 #######################################
@@ -120,20 +91,44 @@ http_response_neue() {
     local STATUS=" $status_code $status_message$BR"
 
     local BODY_PATH="$3"
-    local FILE_EXTENSION="${BODY_PATH##*.}"
+    local HEADER_TYPE=""
 
-    local body_len=$(zstat +size "$BODY_PATH" || print -n 0)
+    local BODY_CONTENT="$5"
+    local body_len
 
-    local HEADER_CUSTOM="" # TODO
-    local HEADER_TYPE="content-type: $CONTENT_TYPES[$FILE_EXTENSION]$BR"
-    local HEADER_CONTENT_LEN="content-length: $body_len$BR"
-    local HEADERS="$([[ "" = $HEADER_CUSTOM ]] && print "accept-ranges: bytes${BR}$HEADER_TYPE$HEADER_CONTENT_LEN$BR" || print "$HEADER_CUSTOM$BR")"
+    if [[ -n $BODY_PATH ]]; then
+        local FILE_EXTENSION="${BODY_PATH##*.}"
+        HEADER_TYPE="content-type: $CONTENT_TYPES[$FILE_EXTENSION]$BR"
+        body_len=$(zstat +size "$BODY_PATH" || print -n 0)
+    else
+        body_len="${#BODY_CONTENT}"
+    fi
 
-    local STATIC_RESP="HTTP/1.1$STATUS$HEADERS"
+    local HEADER_CUSTOM="$4" # TODO
+    local HEADER_CONTENT_LEN=""
 
-    print "$STATIC_RESP"
-    cat "$BODY_PATH"
+    if [[ $body_len -gt 0 ]]; then
+        local HEADER_CONTENT_LEN="content-length: $body_len$BR"
+    fi
+
+    local HEADERS
+    if [[ -n $HEADER_CUSTOM ]]; then
+        HEADERS="$HEADER_CUSTOM$BR"
+    else
+        HEADERS="accept-ranges: bytes${BR}$HEADER_TYPE$HEADER_CONTENT_LEN$BR"
+    fi
+
+    local STATIC_RESP="HTTP/1.1$STATUS$HEADERS$BODY_CONTENT"
+
+    print -n "$STATIC_RESP"
+    if [[ -n $BODY_PATH ]]; then
+        cat "$BODY_PATH"
+    fi
 }
+
+
+typeset -r DEFAULT_BODY="<h1>Hello, world!</h1>"
+typeset -r DEFAULT_RESPONSE=$(http_response_neue 200 Ok "" "" "$DEFAULT_BODY")
 
 typeset -r CHUNK_SIZE=1024
 
@@ -157,29 +152,29 @@ html_router() {
     case "$ROUTE_PATH" in
     *.html)
         if [ -e ".$ROUTE_PATH" ]; then
-            http_response_headers 200 Ok "" "$(cat ".$ROUTE_PATH")"
+            http_response_neue 200 Ok ".$ROUTE_PATH"
         else
-            http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
+            http_response_neue 404 "Not found" "" "" "<p>Page not found.</p>"
         fi
         ;;
     "/")
         # TODO: Not sure this is needed
         ROUTE_PATH_CHARS="${#ROUTE_PATH}"
         if [[ "$ROUTE_PATH_CHARS" > 1 ]]; then
-            http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
+            http_response_neue 404 "Not found" "" "" "<p>Page not found.</p>"
         elif [ -e "./index.html" ]; then
             local BODY=$(cat ".${ROUTE_PATH}index.html")
-            http_response_headers 200 Ok "" "$BODY"
+            http_response_neue 200 Ok ".${ROUTE_PATH}index.html"
         else
-            http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
+            http_response_neue 404 "Not found" "" "" "<p>Page not found.</p>"
         fi
         ;;
     *)
         ROUTE_FILE="./$ROUTE_PATH/index.html"
         if [ -e "$ROUTE_FILE" ]; then
-            http_response_headers 200 Ok "" "$(cat "$ROUTE_FILE")"
+            http_response_neue 200 Ok "$ROUTE_FILE"
         else
-            http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
+            http_response_neue 404 "Not found" "" "" "<p>Page not found.</p>"
         fi
         ;;
     esac
@@ -191,16 +186,13 @@ html-handler() {
 
     case $HANDLER_METHOD in
     "GET")
-        RESP_200=$(html_router "$HANDLER_PATH")
-        print -n $RESP_200
+        html_router "$HANDLER_PATH"
         ;;
     "HEAD")
-        RESP_501=$(http_response_headers 501 "Not Implemented" "" "")
-        print -n $RESP_501
+        http_response_neue 501 "Not Implemented" "" ""
         ;;
     *)
-        RESP_501=$(http_response_headers 501 "Not Implemented" "" "<p>Unsupported method ($HANDLER_METHOD)</p>")
-        print -n $RESP_501
+        http_response_neue 501 "Not Implemented" "" "" "<p>Unsupported method ($HANDLER_METHOD)</p>"
         ;;
     esac
 }
@@ -215,57 +207,56 @@ file_router() {
         if [ -e ".$ROUTE_PATH" ]; then
             http_response_neue 200 Ok ".$ROUTE_PATH"
         else
-            http_response_headers 404 "Not found" "" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     *.png | *.gif | *.jpeg | *.jpg | *.webp )
         if [ -e ".$ROUTE_PATH" ]; then
             http_response_neue 200 Ok ".$ROUTE_PATH"
         else
-            http_response_headers 404 "Not found" "" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     *.html)
         if [ -e ".$ROUTE_PATH" ]; then
             http_response_neue 200 Ok ".$ROUTE_PATH" 
         else
-            http_response_headers 404 "Not found" "" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     "/")
         # TODO: Not sure this is needed
         ROUTE_PATH_CHARS="${#ROUTE_PATH}"
         if [[ "$ROUTE_PATH_CHARS" > 1 ]]; then
-            http_response_headers 404 "Not found" "" "<p>Page not found.</p>"
+            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
         elif [ -e "./index.html" ]; then
-            local BODY=$(cat ".${ROUTE_PATH}index.html")
-            http_response_headers 200 Ok "" "$BODY"
+            http_response_neue 200 Ok ".${ROUTE_PATH}index.html"
         else
-            http_response_headers 404 "Not found" "" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     */)
         ROUTE_FILE="./${ROUTE_PATH}index.html"
         if [ -e "$ROUTE_FILE" ]; then
-            http_response_headers 200 Ok "" "$(cat "$ROUTE_FILE")"
+            http_response_neue 200 Ok "$ROUTE_FILE"
         else
-            http_response_headers 404 "Not found" "" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     */[a-zA-Z0-9_]##)
         ROUTE_FILE="./$ROUTE_PATH/index.html"
         if [ -e "$ROUTE_FILE" ]; then
-            http_response_headers 301 "Move Permanently" "LOCATION: http://localhost:$conf[PORT]$ROUTE_PATH/$BR" ""
+            http_response_neue 301 "Move Permanently" "" "LOCATION: http://localhost:$conf[PORT]$ROUTE_PATH/$BR" ""
         else
-            http_response_headers 404 "Not found" "" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     *)
         ROUTE_FILE="./$ROUTE_PATH/index.html"
         if [ -e "$ROUTE_FILE" ]; then
-            http_response_headers 200 Ok "" "$(cat "$ROUTE_FILE")"
+            http_response_neue 200 Ok "$ROUTE_FILE"
         else
-            http_response_headers 404 "Not found" "" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
         fi
         ;;
     esac
@@ -280,10 +271,10 @@ file-handler() {
         file_router "$HANDLER_PATH"
         ;;
     "HEAD")
-        http_response_headers 501 "Not Implemented" "" ""
+        http_response_neue 501 "Not Implemented" "" ""
         ;;
     *)
-        http_response_headers 501 "Not Implemented" "" "<p>Unsupported method ($HANDLER_METHOD)</p>"
+        http_response_neue 501 "Not Implemented" "" "" "<p>Unsupported method ($HANDLER_METHOD)</p>"
         ;;
     esac
 }
