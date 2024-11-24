@@ -15,23 +15,24 @@ A meat and potatoes HTTP server written in ZSH.
 ## To Do
 
 - [ ] Separate query string, split parameters into an associative array
+  - [ ] Separate hash `#`
 - [ ] add help option `-h`, `--help`
 - [x] Read response
 - [ ] file server
-  - [x] images
-    - [x] PNG
-    - [x] JPEG
-    - [x] GIF
-    - [x] WEBP
-    - [ ] SVG
-  - [x] JS
-  - [x] CSS
-  - [x] JSON
-  - [x] YAML
   - list files
   - list directories
   - navigate directories
   - server files
+    - [x] images
+      - [x] PNG
+      - [x] JPEG
+      - [x] GIF
+      - [x] WEBP
+      - [ ] SVG
+    - [x] JS
+    - [x] CSS
+    - [x] JSON
+    - [x] YAML
 - [x] Use Z shell TCP module
 - [x] Support darwin
 - [ ] HTTP 2.0 support
