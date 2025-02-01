@@ -1,5 +1,13 @@
 #!/usr/bin/env zsh
 
+ #    ___     ___     ___      ___       ___   
+ #   /\__\   /\  \   /\  \    /\  \     /\  \  
+ #  /:/__/_  \:\  \  \:\  \  /::\  \   _\:\  \ 
+ # /::\/\__\ /::\__\ /::\__\/::\:\__\ /::::\__\
+ # \/\::/  //:/\/__//:/\/__/\/\::/  / \::;;/__/
+ #   /:/  / \/__/   \/__/      \/__/   \:\__\  
+ #   \/__/                              \/__/  
+
 zmodload zsh/net/tcp
 zmodload -F zsh/stat b:zstat
 
@@ -68,9 +76,20 @@ typeset -A CONTENT_TYPES=(
     json application/json
 )
 
-print "port: $conf[PORT]"
-print "host: $conf[HOST]"
-print "server type: $SERVER_TYPE[$serv_type]"
+echo '
+      ___     ___     ___      ___    \e[1;31m   ___    \e[0m
+     /\__\   /\  \   /\  \    /\  \   \e[1;31m  /\  \   \e[0m
+    /:/__/_  \:\  \  \:\  \  /::\  \  \e[1;31m _\:\  \  \e[0m
+   /::\/\__\ /::\__\ /::\__\/::\:\__\ \e[1;31m/::::\__\ \e[0m
+   \/\::/  //:/\/__//:/\/__/\/\::/  / \e[1;31m\::;;/__/ \e[0m
+     /:/  / \/__/   \/__/      \/__/  \e[1;31m \:\__\   \e[0m
+     \/__/                            \e[1;31m  \/__/   \e[0m
+\e[0m'
+
+print "   port: $conf[PORT]"
+print "   host: $conf[HOST]"
+print "    url: http://$conf[HOST]:$conf[PORT]/"
+print "   type: $SERVER_TYPE[$serv_type] server"
 
 typeset -r BR="\r\n"
 
