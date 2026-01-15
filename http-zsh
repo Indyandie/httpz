@@ -147,6 +147,25 @@ http_response_neue() {
 }
 
 
+directory_listing() {
+    local dir_path="$1"
+    local request_path="${dir_path#.}"
+
+    local html="<html><head><title>Directory listing</title></head><body><h1>Directory: $request_path</h1><ul>"
+    for file in "$dir_path"*; do
+        if [[ -e "$file" ]]; then
+            local name="${file##*/}"
+            local href="$request_path$name"
+            if [[ -d "$file" ]]; then
+                href="$href/"
+            fi
+            html+="<li><a href=\"$href\">$name</a></li>"
+        fi
+    done
+    html+="</ul></body></html>"
+    print -n "$html"
+}
+
 typeset -r DEFAULT_BODY="<h1>Hello, world!</h1>"
 typeset -r DEFAULT_RESPONSE=$(http_response_neue 200 Ok "" "" "$DEFAULT_BODY")
 
