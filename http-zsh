@@ -166,6 +166,28 @@ directory_listing() {
     print -n "$html"
 }
 
+serve_file_or_404() {
+    local file_path="$1"
+    if [[ -f "$file_path" ]]; then
+        http_response_neue 200 Ok "$file_path"
+    else
+        http_response_neue 404 "Not found" "" "" "<p>File not found.</p>"
+    fi
+}
+
+serve_index_or_dir_or_404() {
+    local dir_path="$1"
+    local index_file="$dir_path/index.html"
+    if [[ -f "$index_file" ]]; then
+        http_response_neue 200 Ok "$index_file"
+    elif [[ -d "$dir_path" ]]; then
+        local listing=$(directory_listing "$dir_path")
+        http_response_neue 200 Ok "" "" "$listing"
+    else
+        http_response_neue 404 "Not found" "" "" "<p>Directory not found.</p>"
+    fi
+}
+
 typeset -r DEFAULT_BODY="<h1>Hello, world!</h1>"
 typeset -r DEFAULT_RESPONSE=$(http_response_neue 200 Ok "" "" "$DEFAULT_BODY")
 
@@ -197,13 +219,8 @@ html_router() {
         fi
         ;;
     "/")
-        # TODO: Not sure this is needed
-        ROUTE_PATH_CHARS="${#ROUTE_PATH}"
-        if [[ "$ROUTE_PATH_CHARS" > 1 ]]; then
-            http_response_neue 404 "Not found" "" "" "<p>Page not found.</p>"
-        elif [ -e "./index.html" ]; then
-            local BODY=$(cat ".${ROUTE_PATH}index.html")
-            http_response_neue 200 Ok ".${ROUTE_PATH}index.html"
+        if [[ -f ./index.html ]]; then
+            http_response_neue 200 Ok "./index.html"
         else
             http_response_neue 404 "Not found" "" "" "<p>Page not found.</p>"
         fi
@@ -242,61 +259,25 @@ file_router() {
     setopt EXTENDED_GLOB
 
     case "$ROUTE_PATH" in
-    *.js | *.css | *.yml | *.yaml | *.json )
-        if [ -e ".$ROUTE_PATH" ]; then
-            http_response_neue 200 Ok ".$ROUTE_PATH"
-        else
-            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
-        fi
-        ;;
-    *.png | *.gif | *.jpeg | *.jpg | *.webp )
-        if [ -e ".$ROUTE_PATH" ]; then
-            http_response_neue 200 Ok ".$ROUTE_PATH"
-        else
-            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
-        fi
-        ;;
-    *.html)
-        if [ -e ".$ROUTE_PATH" ]; then
-            http_response_neue 200 Ok ".$ROUTE_PATH" 
-        else
-            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
-        fi
+    *.js | *.css | *.yml | *.yaml | *.json | *.png | *.gif | *.jpeg | *.jpg | *.webp | *.html)
+        serve_file_or_404 ".$ROUTE_PATH"
         ;;
     "/")
-        # TODO: Not sure this is needed
-        ROUTE_PATH_CHARS="${#ROUTE_PATH}"
-        if [[ "$ROUTE_PATH_CHARS" > 1 ]]; then
-            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
-        elif [ -e "./index.html" ]; then
-            http_response_neue 200 Ok ".${ROUTE_PATH}index.html"
-        else
-            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
-        fi
+        serve_index_or_dir_or_404 "./"
         ;;
     */)
-        ROUTE_FILE="./${ROUTE_PATH}index.html"
-        if [ -e "$ROUTE_FILE" ]; then
-            http_response_neue 200 Ok "$ROUTE_FILE"
-        else
-            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
-        fi
+        serve_index_or_dir_or_404 "./${ROUTE_PATH%/}"
         ;;
     */[a-zA-Z0-9_]##)
         ROUTE_FILE="./$ROUTE_PATH/index.html"
-        if [ -e "$ROUTE_FILE" ]; then
+        if [[ -f "$ROUTE_FILE" ]]; then
             http_response_neue 301 "Move Permanently" "" "LOCATION: http://localhost:$conf[PORT]$ROUTE_PATH/$BR" ""
         else
-            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
+            http_response_neue 404 "Not found" "" "" "<p>Page not found.</p>"
         fi
         ;;
     *)
-        ROUTE_FILE="./$ROUTE_PATH/index.html"
-        if [ -e "$ROUTE_FILE" ]; then
-            http_response_neue 200 Ok "$ROUTE_FILE"
-        else
-            http_response_neue 404 "Not found" "" "" "<p>Page not found. $ROUTE_PATH</p>"
-        fi
+        serve_index_or_dir_or_404 "./$ROUTE_PATH"
         ;;
     esac
 }
