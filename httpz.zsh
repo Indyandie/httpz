@@ -359,15 +359,13 @@ http-listen() {
                         unset  req_body req_body_json
                     ;;
                     (*)
-                        while true; do
-                            chunk=$(timeout 0.01 dd bs=$CHUNK_SIZE count=1 <&$fd 2>/dev/null)
-
-                            if [[ $? -ne 0 || -z "$chunk" ]]; then
-                                break
-                            fi
-
-                            req_body+=$chunk
-                        done
+                        local content_length="${req_headers[Content-Length]}"
+                        if ! [[ $content_length =~ ^[0-9]+$ ]]; then
+                            content_length=0
+                        fi
+                        if (( content_length > 0 )); then
+                            read -u $fd -k $content_length req_body
+                        fi
 
                         typeset req_body_json="\"body\": \"$req_body\""
                         print $req_body_json
