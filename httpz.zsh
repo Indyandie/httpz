@@ -146,19 +146,21 @@ http_response_neue() {
     fi
 }
 
-
 directory_listing() {
     local dir_path="$1"
-    local request_path="${dir_path#.}"
-
+    local request_path="$dir_path"
+    if [[ $request_path == ./* ]]; then
+        request_path=${request_path#./}
+    fi
     local html="<html><head><title>Directory listing</title></head><body><h1>Directory: $request_path</h1><ul>"
-    for file in "$dir_path"*; do
+    for file in "$dir_path"/*(N:o); do
         if [[ -e "$file" ]]; then
             local name="${file##*/}"
-            local href="$request_path$name"
+            local href="$request_path/$name"
             if [[ -d "$file" ]]; then
                 href="$href/"
             fi
+            # Fix: Quote variables to prevent HTML breakage
             html+="<li><a href=\"$href\">$name</a></li>"
         fi
     done
@@ -182,7 +184,7 @@ serve_index_or_dir_or_404() {
         http_response_neue 200 Ok "$index_file"
     elif [[ -d "$dir_path" ]]; then
         local listing=$(directory_listing "$dir_path")
-        http_response_neue 200 Ok "" "" "$listing"
+        http_response_neue 200 Ok "" "content-type: text/html$BR" "$listing"
     else
         http_response_neue 404 "Not found" "" "" "<p>Directory not found.</p>"
     fi
