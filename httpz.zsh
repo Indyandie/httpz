@@ -338,12 +338,12 @@ http-listen() {
                 req_headers[$header_key]="${header_value//\"/\\\\\"}"
             done
 
-            typeset req_headers_json='"headers": {\n'
+            local headers_json_parts=()
             for key in "${(@k)req_headers}"; do
-                req_headers_json+="\"$key\": \"${req_headers[$key]}\",\n"
+                local value="${req_headers[$key]}"
+                headers_json_parts+=("\"$key\": \"$value\"")
             done
-
-            req_headers_json="\{${req_headers_json:0:-3}\}\}" # close the json object
+            local req_headers_json="{\"headers\": {${(j: , :)headers_json_parts}}}"
 
             if [[ "$verbose" > 0 ]]; then
                 print "method:$req_method\npath: $req_path\nversion: $req_version\n\n"
