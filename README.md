@@ -28,7 +28,7 @@ A meat and potatoes HTTP server written in ZSH.
       - [x] JPEG
       - [x] GIF
       - [x] WEBP
-      - [ ] SVG
+      - [x] SVG
     - [x] JS
     - [x] CSS
     - [x] JSON

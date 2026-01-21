@@ -155,7 +155,7 @@ test_header "GIF image" "" "/test/minion.gif" "image/gif"
 
 test_header "WebP image" "" "/test/cat.webp" "image/webp"
 
-test_header "SVG file" "" "/test/icon.svg" "text/plain"
+test_header "SVG file" "" "/test/icon.svg" "image/svg+xml"
 
 echo "\n${GREEN}Header testing complete.${NC}"
 echo "Check server verbose output for JSON header dumps."

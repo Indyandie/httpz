@@ -71,6 +71,7 @@ typeset -A CONTENT_TYPES=(
     jpeg image/jpeg
     jpg image/jpg
     webp image/webp
+    svg image/svg+xml
     js application/javascript
     yml application/yaml
     yaml application/yaml
@@ -261,7 +262,7 @@ file_router() {
     setopt EXTENDED_GLOB
 
     case "$ROUTE_PATH" in
-    *.js | *.css | *.yml | *.yaml | *.json | *.png | *.gif | *.jpeg | *.jpg | *.webp | *.html)
+    *.js | *.css | *.yml | *.yaml | *.json | *.png | *.gif | *.jpeg | *.jpg |     *.webp | *.svg | *.html)
         serve_file_or_404 ".$ROUTE_PATH"
         ;;
     "/")
